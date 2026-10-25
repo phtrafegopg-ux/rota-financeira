@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-mlnTbUPdfZutJxQ7HaycXRAVwhbAdb9bhBDstDPAO58='; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-mlnTbUPdfZutJxQ7HaycXRAVwhbAdb9bhBDstDPAO58='; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; img-src 'self' data: blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="theme-color" content="#0b1319"><meta name="description" content="Seu painel financeiro pessoal, com metas Uber, contas, lançamentos e histórico.">
 <link rel="manifest" href="./manifest.webmanifest"><link rel="icon" href="icon.svg" type="image/svg+xml">
 <title>Rota Financeira 2.4 — Multiplataforma</title>
@@ -448,4 +448,5 @@ document.addEventListener('pointerdown',()=>{lastActivity=Date.now()},{passive:t
 document.addEventListener('keydown',()=>{lastActivity=Date.now()});
 setInterval(()=>{if(vaultKey&&Date.now()-lastActivity>15*60*1000){vaultKey=null;vaultSalt=null;data=initial();cloudSession=null;vaultPage()}},60000);
 </script>
+<script src="./updater.js" defer></script>
 </body></html>
