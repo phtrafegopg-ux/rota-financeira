@@ -64,3 +64,17 @@
 - O aplicativo bloqueia o envio de cofre previamente vinculado a conta distinta. A restauração de uma conta diferente exige confirmação explícita e senha do cofre.
 - Segurança de produção ainda depende de testes E2E contra projeto **real** do Supabase, revisão das políticas de backup e monitoramento operacional.
 - SQL/testes não significam que o projeto Supabase do usuário já está criado ou conectado.
+
+
+## Instância oficial Supabase — 26/10/2026
+
+- Organização: `phtrafegopg-ux's Org`, plano gratuito, região São Paulo (`sa-east-1`).
+- Projeto: `rota-financeira` (`ycblzalwgzgcpjbjcfvy`).
+- Migração aplicada com sucesso: `rota_financeira_initial_security`.
+- Tabelas reais: `finance_vault`, `rf_weekly_rankings`, `rf_subscriptions` — todas com RLS e sem permissões de escrita direta para usuários comuns.
+- O app publicado em GitHub Pages carrega a URL oficial e a **chave publicável** em `cloud-config.js`; nenhuma chave secreta está no GitHub.
+- Registro/cadastro: ainda exige confirmação de e-mail e a pessoa escolher sua senha. A configuração do serviço de e-mail e os testes de entrega precisam de validação antes do lançamento público.
+- Backup automático: **não envia dados enquanto o usuário não se autenticar e optar expressamente**.
+- Importante: o projeto contém `rf_write_vault`, função SECURITY DEFINER executável por usuários autenticados. O advisor marca como WARN por desenho. A função verifica `auth.uid()`, recebe exclusivamente payload cifrado e revisão esperada e sua execução é revogada para `PUBLIC` e `anon`; exige auditoria externa e monitoramento antes de escala.
+- Proibição de cobrança e competição com prêmio mantida até backend e análise jurídica.
+- Se já houver backup manual no dispositivo, guarde o arquivo antes de criar conta ou sincronizar pela primeira vez.
