@@ -18,4 +18,6 @@ jobs:
       - run: node --check branding.js
       - run: node --check updater.js
       - run: node --check sw.js
+      - run: node --check online-ranking.js
+      - run: node --check subscriptions.js
       - run: node tests/security-audit.mjs
