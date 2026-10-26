@@ -4,6 +4,7 @@
  "use strict";
  const OPT="rf_autobackup_optin_v31",BASE="rf_revision_anchor_v31";
  let dirty=false, timer=null, busy=false, lastError="",remoteRevision=null,mutationSeq=0;
+ let refreshInFlight=null;
  const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
  const cloudIdentity=()=>{const c=getCloudCfg();return cloudSession&&c.url?c.url+"|"+cloudSession.user:null};
  const anchor=()=>{const k=cloudIdentity();const a=readJSON(BASE,null);return k&&a?.identity===k?a:null};
@@ -17,7 +18,7 @@
  };
  const oldSettings=renderSettings;
  renderSettings=function(){
-   const html=oldSettings();
+   const html=oldSettings().replace("A sincronização é manual nesta versão: envie depois das alterações e restaure em outros aparelhos.", "O backup automático pode ser ativado abaixo após entrar na nuvem. Você também pode exportar um backup manual criptografado.");
    const checked=enabled()?'checked':'';
    const ready=Boolean(cloudSession);
    return html+
@@ -35,9 +36,60 @@
      '<div class="btnrow"><button class="btn secondary grow" data-secure="sync-now">↑ Sincronizar agora</button>'+
      '<button class="btn outline grow" data-secure="check-sync">Verificar conexão</button></div></section>';
  };
+
+ // Tokens de acesso e atualização somente em memória; jamais em localStorage.
+ function authHeaders(cfg, token){
+   return {"apikey":cfg.anon,"Authorization":"Bearer "+(token||cfg.anon),"Content-Type":"application/json"};
+ }
+ function setSession(body){
+   if(!body?.access_token||!body?.refresh_token||!body?.user?.id)throw Error("Resposta de autenticação incompleta.");
+   cloudSession={
+     token:body.access_token,
+     user:body.user.id,
+     refreshToken:body.refresh_token,
+     expiresAt:Date.now()+Math.max(1,Number(body.expires_in)||3600)*1000
+   };
+ }
+ async function ensureSession(){
+   if(!vaultKey)throw Error("Desbloqueie o cofre antes de acessar a nuvem.");
+   if(!cloudSession?.user)throw Error("Entre na sua conta de nuvem.");
+   if(Date.now() < (cloudSession.expiresAt||0)-60000)return;
+   if(!cloudSession.refreshToken)throw Error("Sessão expirada. Entre novamente.");
+   if(!refreshInFlight){
+     refreshInFlight=(async()=>{
+       const cfg=getCloudCfg();
+       const res=await fetch(cfg.url+"/auth/v1/token?grant_type=refresh_token",{
+         method:"POST",
+         headers:authHeaders(cfg),
+         body:JSON.stringify({refresh_token:cloudSession.refreshToken}),
+         cache:"no-store"
+       });
+       const body=await res.json().catch(()=>({}));
+       if(!res.ok||!body.access_token){
+         cloudSession=null;
+         throw Error("Sua sessão de nuvem expirou. Entre novamente.");
+       }
+       const previousUser=cloudSession.user;
+       setSession(body);
+       if(cloudSession.user!==previousUser){
+         cloudSession=null;
+         throw Error("Conta alterada inesperadamente. Entre novamente.");
+       }
+     })().finally(()=>{refreshInFlight=null});
+   }
+   return refreshInFlight;
+ }
+ window.rfEnsureAuth=ensureSession;
+ const originalVaultPage=vaultPage;
+ vaultPage=function(){
+   cloudSession=null;
+   refreshInFlight=null;
+   originalVaultPage();
+ };
  async function apiFetch(path, options={}){
+   await ensureSession();
    const cfg=getCloudCfg();
-   if(!cloudSession||!cfg?.url||!cfg?.anon)throw Error("Faça login em Ajustes → Nuvem.");
+   if(!cfg?.url||!cfg?.anon)throw Error("Configure a nuvem em Ajustes.");
    const r=await fetch(cfg.url+path,{
      ...options,cache:"no-store",
      headers:{...cloudHeaders(cloudSession.token),...(options.headers||{})}
@@ -69,8 +121,8 @@
        throw Error("CONFLITO: outro aparelho alterou a cópia na nuvem. Nada foi sobrescrito. Exporte seu backup local, compare e restaure conscientemente.");
      }
      if(!local&&rev!==0)throw Error("Backup existente não reconhecido. Restaure primeiro.");
-     const blob=await portableVault(); // Inclui comprovantes criptografados.
      const includedMutation=mutationSeq;
+     const blob=await portableVault(); // Snapshot criptografado; alterações posteriores disparam outra rodada.
      const reply=await apiFetch("/rest/v1/rpc/rf_write_vault",{
        method:"POST",body:JSON.stringify({p_vault:blob,p_expected_revision:rev})
      });
@@ -108,14 +160,39 @@
      toast("Backup restaurado. Revisão da nuvem reconhecida.");
    }catch(e){alert("Não foi possível restaurar: "+e.message)}
  };
- const oldHandle=handleCloudForm;
+ // Cadastro e login usam Supabase Auth; refresh_token fica exclusivamente em memória.
  handleCloudForm=async function(form,mode){
-   await oldHandle(form,mode);
-   if(cloudSession){
-     const a=anchor();remoteRevision=a?.revision??null;lastError="";
-     if(page==="settings")render();
-     if(enabled()&&dirty)schedule();
-   }
+   const button=form.querySelector('button[value="'+mode+'"]');
+   if(button)button.disabled=true;
+   try{
+     if(!window.isSecureContext)throw Error("O login exige HTTPS.");
+     const cfg={
+       url:normalizeUrl(form.elements.url.value),
+       anon:form.elements.anon.value.trim()
+     };
+     const email=form.elements.email.value.trim().toLowerCase();
+     const password=form.elements.password.value;
+     if(!cfg.anon||!email||!password)throw Error("Preencha projeto, email e senha.");
+     localStorage.setItem(CLOUD_CFG,JSON.stringify(cfg));
+     const endpoint=mode==="signup"?"signup":"token?grant_type=password";
+     const res=await fetch(cfg.url+"/auth/v1/"+endpoint,{
+       method:"POST",headers:authHeaders(cfg),
+       body:JSON.stringify({email,password}),cache:"no-store"
+     });
+     const body=await res.json().catch(()=>({}));
+     if(!res.ok)throw Error(body.error_description||body.message||body.msg||"Falha na autenticação.");
+     form.elements.password.value="";
+     if(body.access_token){
+       setSession(body);
+       lastError="";remoteRevision=anchor()?.revision??null;
+       toast("Conectado. Os backups permanecem criptografados.");
+       if(enabled()&&dirty)schedule();
+     }else{
+       toast("Cadastro enviado. Confirme seu endereço de email antes de entrar.");
+     }
+     render();
+   }catch(e){alert("Nuvem: "+e.message)}
+   finally{if(button?.isConnected)button.disabled=false}
  };
  function schedule(){
    if(!enabled()||!cloudSession||!vaultKey)return;
