@@ -175,7 +175,6 @@ button{touch-action:manipulation}
  .nav{max-width:980px;gap:8px}
  .formgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
  .entry-seg>button{min-height:86px;font-size:15px}
- .entry-tab-label br{display:none}
  .entry-seg{gap:10px}
  .nav button{font-size:12px}
  .monthstrip h1{font-size:32px}
