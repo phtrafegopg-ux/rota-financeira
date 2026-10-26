@@ -14,6 +14,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: node --check core.js
+      - run: node --check insights.js
       - run: node --check security-center.js
       - run: node --check branding.js
       - run: node --check updater.js
@@ -25,3 +27,11 @@ jobs:
       - run: npx playwright install chromium
       - run: node tests/browser-smoke.mjs
       - run: node tests/cloud-flow.mjs
+      - run: node tests/responsive-layout.mjs
+      - name: Guardar capturas de layout
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: layout-visual-responsive
+          path: test-results/*.png
+          if-no-files-found: ignore

@@ -18,8 +18,10 @@ ok(csp.includes("script-src 'self'"),"CSP restringe origem dos scripts");
 ok(csp.includes("object-src 'none'"),"Objetos bloqueados pela CSP");
 ok(html.includes('security-center.js')&&html.includes('styles-v3.css')&&html.includes('styles-v4.css')&&html.includes('insights.js'),"Camada segura e visual carregadas");
 ok(!html.includes('phtrafegopg@gmail.com')&&!/SUPABASE_SERVICE_ROLE_KEY\s*[:=]/.test(html),"Página sem credenciais ou email pessoal");
+ok(html.includes('<link rel="stylesheet" href="./styles-responsive.css">'),"Carrega CSS responsivo na última camada");
+ok(read('core.js').includes('entry-seg')&&read('core.js').includes('entry-tab-label'),"Rótulos de abas responsivos no core");
 const sw=read('sw.js');
-for(const p of ['security-center.js','core.js','insights.js','styles-v4.css','styles-v3.css','branding.js','marca-aprovada.svg'])
+for(const p of ['security-center.js','core.js','insights.js','styles-v4.css','styles-responsive.css','styles-v3.css','branding.js','marca-aprovada.svg'])
  ok(sw.includes(p),"Cache PWA inclui "+p);
 const js=read('security-center.js');
 ok(js.includes('rf_write_vault')&&js.includes('p_expected_revision'),"Backup chama RPC transacional");
