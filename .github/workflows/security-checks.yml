@@ -1,0 +1,21 @@
+name: Verificações de segurança
+on:
+  push:
+    branches: [main, seguranca-visual-v3-1]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check security-center.js
+      - run: node --check branding.js
+      - run: node --check updater.js
+      - run: node --check sw.js
+      - run: node tests/security-audit.mjs
