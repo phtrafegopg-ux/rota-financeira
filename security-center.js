@@ -145,24 +145,99 @@
    }finally{busy=false}
  }
  cloudUpload=function(){return putVault({manual:true})};
+ // Restaurar por formulário interno: Chrome, WebView e navegadores corporativos
+ // podem recusar window.prompt()/window.confirm().
+ let restoringCloud=false;
  cloudDownload=async function(){
-   if(!cloudSession){alert("Entre na conta de nuvem primeiro.");return}
+   if(restoringCloud)return;
+   if(!cloudSession||!vaultKey){
+     alert("Desbloqueie o cofre e entre na conta em Ajustes → Nuvem.");
+     return;
+   }
    try{
-     const row=await fetchCloudVault();
-     if(!row){toast("Ainda não existe backup nessa conta.");return}
-     const pass=prompt("Digite a senha ORIGINAL do cofre na nuvem:");
-     if(!pass)return;
-     const salt=unbase64(row.vault.salt);
-     const key=await deriveKey(pass,salt);
-     const restored=await decryptState(row.vault,key);
-     if(!confirm("ATENÇÃO: isto SUBSTITUI os registros locais. Exporte um backup deste aparelho antes de continuar. Você confirma que já salvou a cópia local?"))return;
-     await waitSave();
-     await restorePortableState(restored,key,salt);
-     setAnchor(Number(row.revision||0));
-     dirty=false;lastError="";
-     toast("Backup restaurado. Revisão da nuvem reconhecida.");
-   }catch(e){alert("Não foi possível restaurar: "+e.message)}
+     const backup=await fetchCloudVault();
+     if(!backup||!backup.vault){
+       toast("Não existe backup criptografado nesta conta.");
+       return;
+     }
+     showModal("Restaurar backup da nuvem",
+       '<form data-cloud-restore autocomplete="off">'+
+       '<div class="notice mint-note">Backup encontrado no servidor: revisão '+esc(backup.revision)+'. A restauração não envia nem modifica os dados na nuvem.</div>'+
+       '<p class="hint">Digite a senha ORIGINAL do cofre salvo no celular. Não use a senha temporária deste PC nem a senha de login da nuvem, caso sejam diferentes.</p>'+
+       '<div class="field"><label for="rf-cloud-pass">Senha original do cofre</label>'+
+       '<input id="rf-cloud-pass" name="originalPass" type="password" autocomplete="off" required placeholder="Senha do cofre do celular"></div>'+
+       '<label class="field" style="display:flex;flex-direction:row;align-items:start;gap:10px">'+
+       '<input name="ack" type="checkbox" required style="width:22px;height:22px;flex:none">'+
+       '<span>Entendo que a restauração substituirá os dados locais deste computador. Já guardei um backup local, se necessário. Os dados da nuvem não serão alterados.</span></label>'+
+       '<div id="rf-restore-error" class="notice rf-risk" role="alert" aria-live="assertive" style="display:none"></div>'+
+       '<div class="btnrow"><button class="btn secondary grow" type="button" data-action="close">Cancelar</button>'+
+       '<button class="btn grow" type="submit">Restaurar neste dispositivo</button></div>'+
+       '</form>');
+     document.getElementById("rf-cloud-pass")?.focus();
+   }catch(e){
+     alert("Não foi possível localizar o backup: "+String(e.message||e));
+   }
  };
+ document.addEventListener("submit",async event=>{
+   const form=event.target;
+   if(!form.matches("form[data-cloud-restore]"))return;
+   event.preventDefault();
+   if(restoringCloud)return;
+   const warn=form.querySelector("#rf-restore-error");
+   const button=form.querySelector('button[type="submit"]');
+   if(!form.elements.ack.checked||!form.elements.originalPass.value)return;
+   const originalPassword=form.elements.originalPass.value;
+   form.elements.originalPass.value="";
+   restoringCloud=true;
+   button.disabled=true;
+   button.textContent="Verificando e restaurando…";
+   warn.style.display="none";
+   const currentAccount=cloudIdentity();
+   try{
+     if(!vaultKey||!currentAccount)throw Error("A sessão foi encerrada. Desbloqueie e entre na nuvem novamente.");
+     // Buscar novamente no momento da confirmação: nunca restaurar cópia obsoleta.
+     const row=await fetchCloudVault();
+     if(!row||row.vault?.schema!==2||!Number.isSafeInteger(Number(row.revision))){
+       throw Error("Backup ausente ou incompatível. Nenhum dado local foi substituído.");
+     }
+     if(cloudIdentity()!==currentAccount)throw Error("A conta mudou durante a operação. Restauração cancelada.");
+     const salt=unbase64(row.vault.salt);
+     const key=await deriveKey(originalPassword,salt);
+     let restored;
+     try{
+       restored=await decryptState(row.vault,key);
+     }catch{
+       throw Error("Senha original incorreta ou backup danificado. Os dados locais continuam intactos.");
+     }
+     // Apenas depois de verificar senha e consentimento modificar o dispositivo.
+     await waitSave();
+     if(cloudIdentity()!==currentAccount)throw Error("A conta mudou. Nada foi substituído.");
+     clearTimeout(timer);
+     await restorePortableState(restored,key,salt);
+     setAnchor(Number(row.revision));
+     mutationSeq++;
+     dirty=false;
+     lastError="";
+     // Nunca subir o cofre recém-restaurado automaticamente: permitir conferência.
+     localStorage.removeItem(OPT);
+     closeModal();
+     render();
+     toast("Backup recuperado. Confira saldos e comprovantes antes de ativar a sincronização.");
+   }catch(e){
+     if(warn?.isConnected){
+       warn.textContent=String(e.message||e);
+       warn.style.display="block";
+     }else{
+       alert("Não foi possível restaurar: "+String(e.message||e));
+     }
+   }finally{
+     if(button.isConnected){
+       button.disabled=false;
+       button.textContent="Restaurar neste dispositivo";
+     }
+     restoringCloud=false;
+   }
+ });
  // Cadastro e login usam Supabase Auth; refresh_token fica exclusivamente em memória.
  handleCloudForm=async function(form,mode){
    const button=form.querySelector('button[value="'+mode+'"]');
