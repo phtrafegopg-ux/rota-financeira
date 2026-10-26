@@ -3,7 +3,7 @@
 (function() {
  "use strict";
  const OPT="rf_autobackup_optin_v31",BASE="rf_revision_anchor_v31";
- let dirty=false, timer=null, busy=false, lastError="",remoteRevision=null;
+ let dirty=false, timer=null, busy=false, lastError="",remoteRevision=null,mutationSeq=0;
  const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
  const cloudIdentity=()=>{const c=getCloudCfg();return cloudSession&&c.url?c.url+"|"+cloudSession.user:null};
  const anchor=()=>{const k=cloudIdentity();const a=readJSON(BASE,null);return k&&a?.identity===k?a:null};
@@ -70,13 +70,15 @@
      }
      if(!local&&rev!==0)throw Error("Backup existente não reconhecido. Restaure primeiro.");
      const blob=await portableVault(); // Inclui comprovantes criptografados.
+     const includedMutation=mutationSeq;
      const reply=await apiFetch("/rest/v1/rpc/rf_write_vault",{
        method:"POST",body:JSON.stringify({p_vault:blob,p_expected_revision:rev})
      });
      const item=Array.isArray(reply)?reply[0]:reply;
      if(!Number.isSafeInteger(Number(item?.revision)))throw Error("O servidor não confirmou a nova revisão.");
      setAnchor(Number(item.revision));
-     dirty=false;
+     dirty=mutationSeq!==includedMutation;
+     if(dirty)setTimeout(schedule,1000);
      if(manual)toast("Backup criptografado salvo com controle de revisão.");
      if(page==="settings")render();
      return true;
@@ -123,7 +125,7 @@
  const oldSave=save;
  save=function(strict=false){
    const r=oldSave(strict);
-   if(vaultKey){dirty=true;schedule()}
+   if(vaultKey){mutationSeq++;dirty=true;schedule()}
    return r;
  };
  document.addEventListener("change",ev=>{
@@ -148,5 +150,25 @@
  });
  document.addEventListener("visibilitychange",()=>{if(!document.hidden&&dirty)schedule()});
  window.addEventListener("online",()=>{if(dirty)schedule()});
+ // Nova senha mais forte; senhas antigas de 8 caracteres continuam válidas para desbloquear.
+ const oldSetup=setup;
+ setup=async function(password){
+   if(password.length<12)throw Error("Para proteger o cofre novo, use pelo menos 12 caracteres.");
+   return oldSetup(password);
+ };
+ const oldChange=changeVaultPass;
+ changeVaultPass=async function(form){
+   if(form.elements.password.value.length<12){
+     alert("Use pelo menos 12 caracteres na NOVA senha. A senha antiga continua válida.");
+     return;
+   }
+   return oldChange(form);
+ };
+ const adjustSetup=()=>{
+   const f=document.querySelector('form[data-security="setup"]');
+   if(f){for(const field of f.querySelectorAll('input[type=password]'))field.minLength=12;}
+ };
+ new MutationObserver(adjustSetup).observe(document.getElementById('app'),{childList:true,subtree:true});
+ adjustSetup();
  window.rfSecurityStatus=()=>({connected:!!cloudSession,autoSync:enabled(),dirty,revision:anchor()?.revision??null,error:lastError});
 })();
