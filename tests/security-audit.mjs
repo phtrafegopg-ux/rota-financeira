@@ -8,7 +8,7 @@ const ok=(condition,name)=>{
 };
 const html=read('index.html');
 const csp=html.match(/Content-Security-Policy" content="([^"]+)"/)?.[1]||'';
-const script=html.match(/<script>\n([\s\S]*?)<\/script>/)?.[1];
+const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
 const sha=script&&crypto.createHash('sha256').update(script).digest('base64');
 ok(!!script&&csp.includes("'sha256-"+sha+"'"),"Hash CSP coincide com script local");
 ok(csp.includes("script-src 'self'"),"CSP permite apenas scripts próprios e inline assinado");
