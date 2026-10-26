@@ -8,8 +8,10 @@
  const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
  const cloudIdentity=()=>{const c=getCloudCfg();return cloudSession&&c.url?c.url+"|"+cloudSession.user:null};
  const anchor=()=>{const k=cloudIdentity();const a=readJSON(BASE,null);return k&&a?.identity===k?a:null};
+ const boundToAnotherAccount=()=>{const old=readJSON(BASE,null)?.identity;return !!old&&old!==cloudIdentity()};
+
  const setAnchor=rev=>{const id=cloudIdentity();if(id)localStorage.setItem(BASE,JSON.stringify({identity:id,revision:rev,at:new Date().toISOString()}));remoteRevision=rev};
- const enabled=()=>localStorage.getItem(OPT)==="1";
+ const enabled=()=>Boolean(cloudIdentity())&&localStorage.getItem(OPT)===cloudIdentity();
  const statusText=()=>{
    if(!cloudSession)return "Desconectado: dados só neste aparelho.";
    if(lastError)return "Atenção: "+lastError;
@@ -111,6 +113,7 @@
    busy=true;lastError="";
    try{
      await waitSave();
+     if(boundToAnotherAccount())throw Error("Este cofre já está vinculado a outra conta de nuvem. Não enviaremos seus dados para uma conta diferente. Exporte um backup e restaure conscientemente o cofre da conta desejada.");
      const local=anchor();
      const remote=await fetchCloudVault();
      const rev=Number(remote?.revision||0);
@@ -228,7 +231,17 @@
  };
  document.addEventListener("change",ev=>{
    if(ev.target?.id!=="rfAutosync")return;
-   localStorage.setItem(OPT,ev.target.checked?"1":"0");
+   if(ev.target.checked&&!cloudSession){
+     alert("Faça login na nuvem antes de ativar o backup automático.");
+     if(page==="settings")render();
+     return;
+   }
+   if(ev.target.checked&&boundToAnotherAccount()){
+     alert("Este cofre está vinculado a outra conta. Exporte um backup e restaure o cofre correto antes de ativar.");
+     if(page==="settings")render();
+     return;
+   }
+   localStorage.setItem(OPT,ev.target.checked?cloudIdentity():"");
    if(ev.target.checked){dirty=true;schedule()}else clearTimeout(timer);
    if(page==="settings")render();
  });
