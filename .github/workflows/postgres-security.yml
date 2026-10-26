@@ -1,0 +1,46 @@
+name: Testes de isolamento financeiro (PostgreSQL)
+on:
+  push:
+    branches: [main, hardening-backup-e-isolamento-v32]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  rls:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rota_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d rota_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: rota_test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cliente PostgreSQL
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+      - name: Bootstrap de autenticação simulada
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/00_bootstrap.sql
+      - name: Aplicar esquema do Rota
+        run: psql -X -v ON_ERROR_STOP=1 -f supabase/01_seguro.sql
+      - name: Testar RLS, isolamento A/B, CAS e assinatura
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/02_rls_cases.sql
