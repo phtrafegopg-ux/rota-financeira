@@ -452,6 +452,7 @@ document.addEventListener('keydown',()=>{lastActivity=Date.now()});
 setInterval(()=>{if(vaultKey&&Date.now()-lastActivity>15*60*1000){vaultKey=null;vaultSalt=null;data=initial();cloudSession=null;vaultPage()}},60000);
 </script>
 <script src="./branding.js" defer></script>
+<script src="./cloud-config.js" defer></script>
 <script src="./security-center.js" defer></script>
 <script src="./online-ranking.js" defer></script>
 <script src="./subscriptions.js" defer></script>
