@@ -72,6 +72,66 @@ try{
  assert.equal(uploads,1,'primeiro backup enviado uma única vez');
  assert.ok(!JSON.stringify(remoteVault).includes('SEGREDO_FINANCEIRO_QUE_NAO_PODE_VAZAR'),'dado não foi cifrado');
  assert.equal(await page.evaluate(()=>window.rfSecurityStatus().dirty),false);
+ // Recuperação de backup em computador separado, sem prompt()/confirm().
+ const secondContext=await browser.newContext({viewport:{width:1280,height:800}});
+ await secondContext.addInitScript(()=>{
+   window.prompt=()=>{throw Error("prompt() is not supported")};
+   window.confirm=()=>{throw Error("confirm() is not supported")};
+ });
+ await secondContext.route("https://rota-test.supabase.co/**",async route=>{
+   const req=route.request(),url=new URL(req.url());
+   const headers={
+     "access-control-allow-origin":"*",
+     "access-control-allow-methods":"GET,POST,OPTIONS",
+     "access-control-allow-headers":"apikey, authorization, content-type, cache-control",
+     "content-type":"application/json"
+   };
+   const reply=(body,status=200)=>route.fulfill({status,headers,body:JSON.stringify(body)});
+   if(req.method()==="OPTIONS")return route.fulfill({status:204,headers,body:""});
+   if(url.pathname==="/auth/v1/token")
+     return reply({access_token:"pc-login-jwt",refresh_token:"pc-refresh",expires_in:3600,user:{id:userA}});
+   if(url.pathname==="/rest/v1/finance_vault")
+     return reply([{revision:remoteRev,vault:remoteVault,updated_at:new Date().toISOString()}]);
+   if(url.pathname==="/rest/v1/rf_subscriptions")return reply([]);
+   if(url.pathname==="/rest/v1/rf_weekly_rankings")return reply([]);
+   return reply({message:"Endpoint não simulado"},404);
+ });
+ const pc=await secondContext.newPage(),pcErrors=[];
+ pc.on("pageerror",e=>pcErrors.push(e.message));
+ await pc.goto("http://127.0.0.1:8766/index.html",{waitUntil:"networkidle"});
+ await pc.locator('form[data-security="setup"] input[name="password"]').fill("Senha-PC-Temporaria-2026!");
+ await pc.locator('form[data-security="setup"] input[name="confirm"]').fill("Senha-PC-Temporaria-2026!");
+ await pc.locator('form[data-security="setup"] button[type="submit"]').click();
+ await pc.getByText("Meu painel pessoal").waitFor({timeout:10000});
+ await pc.evaluate(async()=>{data.settings.name="APENAS_PC_TEMPORARIO";await save(true)});
+ await pc.locator('button[data-nav="settings"]').first().click();
+ const loginPC=pc.locator('form[data-security="cloud"]');
+ await loginPC.locator('[name="url"]').fill("https://rota-test.supabase.co");
+ await loginPC.locator('[name="anon"]').fill("public-test-key");
+ await loginPC.locator('[name="email"]').fill("teste@example.org");
+ await loginPC.locator('[name="password"]').fill("Login-PC-2026!");
+ await loginPC.locator('button[value="login"]').click();
+ await pc.waitForFunction(()=>Boolean(cloudSession?.token),{timeout:10000});
+ await pc.locator('[data-action="cloudDownload"]').click();
+ const restore=pc.locator('form[data-cloud-restore]');
+ await restore.waitFor({timeout:10000});
+ await restore.locator('button[data-action="close"]').click();
+ assert.equal(await pc.evaluate(()=>data.settings.name),"APENAS_PC_TEMPORARIO","cancelamento preserva PC");
+ await pc.locator('[data-action="cloudDownload"]').click();
+ await restore.locator('[name="originalPass"]').fill("senha-errada");
+ await restore.locator('[name="ack"]').check();
+ await restore.locator('button[type="submit"]').click();
+ await restore.locator('#rf-restore-error').getByText(/Senha original incorreta/).waitFor({timeout:10000});
+ assert.equal(await pc.evaluate(()=>data.settings.name),"APENAS_PC_TEMPORARIO","senha inválida preserva PC");
+ await restore.locator('[name="originalPass"]').fill("Senha-Forte-Exclusiva-2026!");
+ await restore.locator('button[type="submit"]').click();
+ await pc.waitForFunction(()=>window.rfSecurityStatus?.().revision===1,{timeout:12000});
+ assert.equal(await pc.evaluate(()=>data.settings.name),"SEGREDO_FINANCEIRO_QUE_NAO_PODE_VAZAR","cofre recuperado");
+ assert.equal(await restore.count(),0,"formulário fechado após sucesso");
+ assert.equal(await pc.evaluate(()=>window.rfSecurityStatus().autoSync),false,"sem envio automático após recuperação");
+ assert.equal(pcErrors.length,0,"erros no PC: "+pcErrors.join("; "));
+ await secondContext.close();
+ console.log("PASS — recuperação PC: cancelar, senha errada, senha certa, sem prompt e sem upload.");
  // Renova tokens vencidos sem armazená-los em localStorage.
  await page.evaluate(()=>{cloudSession.expiresAt=Date.now()-100});
  await page.evaluate(async()=>{await fetchCloudVault()});
