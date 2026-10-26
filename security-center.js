@@ -268,6 +268,15 @@
      if(body.access_token){
        setSession(body);
        lastError="";remoteRevision=anchor()?.revision??null;
+       // Migração de versões anteriores: recuperar aviso de backup atrasado
+       // sem confiar em uma sessão anterior ao reiniciar o navegador.
+       const lastConfirmed=anchor()?.at;
+       const localModified=currentVault?.updatedAt;
+       if(lastConfirmed&&localModified&&
+          Date.parse(localModified)>Date.parse(lastConfirmed)+2000){
+         dirty=true;
+         localStorage.setItem(PENDING,localModified);
+       }
        toast("Conectado. Os backups permanecem criptografados.");
        if(enabled()&&dirty)schedule();
      }else{
