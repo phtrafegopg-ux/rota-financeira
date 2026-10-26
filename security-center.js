@@ -2,8 +2,8 @@
    Sem credenciais privadas no cliente. Requer supabase/01_seguro.sql. */
 (function() {
  "use strict";
- const OPT="rf_autobackup_optin_v31",BASE="rf_revision_anchor_v31";
- let dirty=false, timer=null, busy=false, lastError="",remoteRevision=null,mutationSeq=0;
+ const OPT="rf_autobackup_optin_v31",BASE="rf_revision_anchor_v31",PENDING="rf_local_unsynced_v40";
+ let dirty=Boolean(localStorage.getItem(PENDING)), timer=null, busy=false, lastError="",remoteRevision=null,mutationSeq=0;
  let refreshInFlight=null;
  const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
  const cloudIdentity=()=>{const c=getCloudCfg();return cloudSession&&c.url?c.url+"|"+cloudSession.user:null};
@@ -13,10 +13,12 @@
  const setAnchor=rev=>{const id=cloudIdentity();if(id)localStorage.setItem(BASE,JSON.stringify({identity:id,revision:rev,at:new Date().toISOString()}));remoteRevision=rev};
  const enabled=()=>Boolean(cloudIdentity())&&localStorage.getItem(OPT)===cloudIdentity();
  const statusText=()=>{
-   if(!cloudSession)return "Desconectado: dados só neste aparelho.";
-   if(lastError)return "Atenção: "+lastError;
-   if(!enabled())return "Conectado. Backup automático desativado.";
-   return "Conectado. Backup automático ativo enquanto o aplicativo estiver aberto.";
+   if(!cloudSession)return "Sem login na nuvem. "+(dirty?"Há alterações locais ainda não confirmadas no servidor.":"Os dados deste aparelho continuam criptografados.");
+   if(lastError)return "Backup não confirmado: "+lastError;
+   if(dirty)return "Há alterações locais aguardando envio. Não limpe os dados do aparelho.";
+   if(!enabled())return "Conectado. Sincronização automática desligada.";
+   const a=anchor();
+   return a?"Último backup confirmado em "+new Date(a.at).toLocaleString("pt-BR")+".":"Conectado. O primeiro backup ainda não foi confirmado.";
  };
  const oldSettings=renderSettings;
  renderSettings=function(){
@@ -24,19 +26,19 @@
    const checked=enabled()?'checked':'';
    const ready=Boolean(cloudSession);
    return html+
-     '<section class="panel" id="rf-security-center"><div class="row start"><h2 class="h2">🛡️ Central de proteção</h2><span class="rf-badge">Versão 3.1</span></div>'+
+     '<section class="panel" id="rf-security-center"><div class="row start"><h2 class="h2">🛡️ Central de proteção</h2><span class="rf-badge">Versão 4.0</span></div>'+
      '<div class="rf-security-summary"><div><strong>Criptografia local</strong><span>AES-GCM no dispositivo</span></div>'+
      '<div><strong>Conta em nuvem</strong><span>'+(ready?'Sessão ativa':'Login necessário')+'</span></div>'+
-     '<div><strong>Sincronização</strong><span>'+(enabled()?'Ao editar, quando conectado':'Desativada')+'</span></div>'+
+     '<div><strong>Sincronização</strong><span>'+(dirty?'Alterações pendentes':enabled()?'Ao editar, quando conectado':'Desativada')+'</span></div>'+
      '<div><strong>Conflitos</strong><span>Bloqueio de sobrescrita (RPC)</span></div></div>'+
-     '<div class="notice '+(lastError?'rf-risk':'mint-note')+'">'+esc(statusText())+'</div>'+
+     '<div class="notice '+(lastError||dirty?'rf-risk':'mint-note')+'" role="status" aria-live="polite">'+esc(statusText())+'</div>'+
      '<label class="field" style="display:flex;flex-direction:row;align-items:center;gap:12px">'+
        '<input id="rfAutosync" type="checkbox" style="width:22px;height:22px" '+checked+'>'+
        '<span>Backup automático criptografado ao registrar alterações</span></label>'+
      '<p class="rf-hint">Requer seu projeto Supabase configurado com o SQL de segurança e login na seção Nuvem. Não envia seus dados antes da autenticação. A senha do cofre nunca é transmitida. Nunca envia dinheiro ou dados sem sua ação.</p>'+
      '<p class="rf-hint">Por segurança, ao fechar o app a sessão de nuvem termina. Ao reabrir, desbloqueie o cofre e entre na nuvem novamente. Não use dois aparelhos ao mesmo tempo sem revisar as alterações: conflitos são bloqueados, nunca mesclados silenciosamente.</p>'+
      '<div class="btnrow"><button class="btn secondary grow" data-secure="sync-now">↑ Sincronizar agora</button>'+
-     '<button class="btn outline grow" data-secure="check-sync">Verificar conexão</button></div></section>';
+     '<button class="btn outline grow" data-secure="check-sync">Verificar conexão</button></div>'+ (ready?'<button class="btn outline block" data-secure="logout-cloud" type="button">Sair da conta da nuvem neste aparelho</button>':'')+'</section>';
  };
 
  // Tokens de acesso e atualização somente em memória; jamais em localStorage.
@@ -86,6 +88,7 @@
  vaultPage=function(){
    cloudSession=null;
    refreshInFlight=null;
+   clearTimeout(timer);
    originalVaultPage();
  };
  async function apiFetch(path, options={}){
@@ -133,6 +136,7 @@
      if(!Number.isSafeInteger(Number(item?.revision)))throw Error("O servidor não confirmou a nova revisão.");
      setAnchor(Number(item.revision));
      dirty=mutationSeq!==includedMutation;
+     if(!dirty)localStorage.removeItem(PENDING);
      if(dirty)setTimeout(schedule,1000);
      if(manual)toast("Backup criptografado salvo com controle de revisão.");
      if(page==="settings")render();
@@ -217,6 +221,7 @@
      setAnchor(Number(row.revision));
      mutationSeq++;
      dirty=false;
+     localStorage.removeItem(PENDING);
      lastError="";
      // Nunca subir o cofre recém-restaurado automaticamente: permitir conferência.
      localStorage.removeItem(OPT);
@@ -301,7 +306,7 @@
  const oldSave=save;
  save=function(strict=false){
    const r=oldSave(strict);
-   if(vaultKey){mutationSeq++;dirty=true;schedule()}
+   if(vaultKey){mutationSeq++;dirty=true;localStorage.setItem(PENDING,new Date().toISOString());schedule()}
    return r;
  };
  document.addEventListener("change",ev=>{
@@ -323,6 +328,15 @@
  document.addEventListener("click",async ev=>{
    const btn=ev.target.closest("button[data-secure]");
    if(!btn)return;
+   if(btn.dataset.secure==="logout-cloud"){
+     clearTimeout(timer);
+     cloudSession=null;
+     refreshInFlight=null;
+     lastError="";
+     render();
+     toast("Sessão de nuvem encerrada neste aparelho.");
+     return;
+   }
    if(btn.dataset.secure==="sync-now")await putVault({manual:true});
    if(btn.dataset.secure==="check-sync"){
      if(!cloudSession){alert("Faça login em Ajustes → Nuvem.");return}
