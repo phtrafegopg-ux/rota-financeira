@@ -40,7 +40,7 @@
    if(!cloudSession||!cfg?.url||!cfg?.anon)throw Error("Faça login em Ajustes → Nuvem.");
    const r=await fetch(cfg.url+path,{
      ...options,cache:"no-store",
-     headers:{...cloudHeaders(cloudSession.token),"Cache-Control":"no-store",...(options.headers||{})}
+     headers:{...cloudHeaders(cloudSession.token),...(options.headers||{})}
    });
    const json=await r.json().catch(()=>({}));
    if(!r.ok){
@@ -122,6 +122,27 @@
    clearTimeout(timer);
    timer=setTimeout(()=>putVault({manual:false}),12000);
  }
+ // Nunca exibir valores financeiros na notificação/na tela de bloqueio.
+ checkReminders=async function(){
+   if(!vaultKey||reminderBusy)return;
+   reminderBusy=true;
+   try{
+     if(typeof Notification==="undefined"||Notification.permission!=="granted")return;
+     const items=upcoming(2),today=dt();
+     data.alerts=data.alerts||{};
+     for(const item of items){
+       const id=item.id+"_"+item.due;
+       if(data.alerts[id]===today)continue;
+       const message={body:"Confira o próximo vencimento no aplicativo. Valores ocultos por privacidade.",tag:id};
+       if("serviceWorker" in navigator){
+         const reg=await navigator.serviceWorker.ready;
+         await reg.showNotification("Rota Financeira: conta próxima",message);
+       }else new Notification("Rota Financeira: conta próxima",message);
+       data.alerts[id]=today;save();
+     }
+   }catch(e){console.warn("Lembretes indisponíveis",e)}
+   finally{reminderBusy=false}
+ };
  const oldSave=save;
  save=function(strict=false){
    const r=oldSave(strict);
