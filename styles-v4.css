@@ -64,3 +64,19 @@ body{
  .rf-insights-header h2{font-size:18px}
 }
 @media(prefers-reduced-motion:reduce){.rf-track span{transition:none}}
+
+/* Planos: cartão de comparação informativa sem botões de cobrança. */
+.rf-plans{border-color:rgba(109,221,169,.2)}
+.rf-plans-head{display:flex;align-items:start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.rf-plans-head h2{margin:6px 0 0}
+.rf-plan-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}
+.rf-plan-option{background:rgba(7,25,31,.78);border:1px solid rgba(156,215,207,.2);border-radius:17px;padding:17px 14px;min-width:0}
+.rf-plan-option>span{display:block;color:#8cdbb7;letter-spacing:.12em;font-size:10px;font-weight:850}
+.rf-plan-option h3{font-size:15px;line-height:1.32;margin:12px 0;color:#f0fff9}
+.rf-plan-option>strong{display:block;letter-spacing:-.04em;font-size:clamp(18px,3.3vw,26px);color:#ecfefa;white-space:normal}
+.rf-plan-option small{display:block;font-size:11px;letter-spacing:0;color:#afc7c9;margin-top:3px}
+.rf-plan-option p{font-size:12px;color:#b6cacc;line-height:1.65;margin:12px 0 0}
+.rf-plan-future{background:linear-gradient(145deg,#163d37,#112c31);border-color:rgba(117,235,181,.43)}
+.rf-plan-future>strong{color:#b3ffdd}
+.rf-coming-soon{display:inline-block;margin-top:16px;font-size:11px;color:#d6e5df;background:#254e43;border:1px solid #326959;border-radius:999px;padding:6px 11px;font-weight:750}
+@media(max-width:460px){.rf-plan-options{grid-template-columns:1fr}.rf-plan-option{padding:16px}}
