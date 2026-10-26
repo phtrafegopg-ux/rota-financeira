@@ -1,0 +1,33 @@
+import fs from 'node:fs';
+import crypto from 'node:crypto';
+const read=p=>fs.readFileSync(p,'utf8');
+let fails=0;
+const ok=(condition,name)=>{
+ console.log((condition?'PASS':'FAIL')+' '+name);
+ if(!condition)fails++;
+};
+const html=read('index.html');
+const csp=html.match(/Content-Security-Policy" content="([^"]+)"/)?.[1]||'';
+const script=html.match(/<script>\n([\s\S]*?)<\/script>/)?.[1];
+const sha=script&&crypto.createHash('sha256').update(script).digest('base64');
+ok(!!script&&csp.includes("'sha256-"+sha+"'"),"Hash CSP coincide com script local");
+ok(csp.includes("script-src 'self'"),"CSP permite apenas scripts próprios e inline assinado");
+ok(csp.includes("object-src 'none'"),"Objetos bloqueados pela CSP");
+ok(html.includes('security-center.js')&&html.includes('styles-v3.css'),"Camada segura e visual carregadas");
+ok(!html.includes('service_role')&&!html.includes('phtrafegopg@gmail.com'),"Página sem credenciais ou email pessoal");
+const sw=read('sw.js');
+for(const p of ['security-center.js','styles-v3.css','branding.js','marca-aprovada.svg'])
+ ok(sw.includes(p),"Cache PWA inclui "+p);
+const js=read('security-center.js');
+ok(js.includes('rf_write_vault')&&js.includes('p_expected_revision'),"Backup chama RPC transacional");
+ok(js.includes('RF_REVISION_CONFLICT')||js.includes('CONFLITO'),"Bloqueio de conflito no cliente");
+ok(!js.includes('service_role'),"Cliente não usa credenciais administrativas");
+ok(js.includes('cloudSession')&&js.includes('enabled()'),"Auto backup exige sessão e consentimento");
+const sql=read('supabase/01_seguro.sql');
+ok(sql.includes('enable row level security'),"RLS habilitado");
+ok(sql.includes('revoke all on public.finance_vault')&&sql.includes('grant select on public.finance_vault'),"Escrita direta proibida");
+ok(sql.includes('security definer')&&sql.includes('auth.uid()'),"RPC vinculada ao usuário autenticado");
+const manifest=JSON.parse(read('manifest.webmanifest'));
+ok(manifest.scope==='./'&&manifest.display==='standalone',"Manifest instalável");
+console.log(fails?'Falhas: '+fails:'Todas verificações estáticas passaram.');
+process.exitCode=fails?1:0;
