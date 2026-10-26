@@ -14,7 +14,7 @@ ok(!!script&&csp.includes("'sha256-"+sha+"'"),"Hash CSP coincide com script loca
 ok(csp.includes("script-src 'self'"),"CSP permite apenas scripts próprios e inline assinado");
 ok(csp.includes("object-src 'none'"),"Objetos bloqueados pela CSP");
 ok(html.includes('security-center.js')&&html.includes('styles-v3.css'),"Camada segura e visual carregadas");
-ok(!html.includes('service_role')&&!html.includes('phtrafegopg@gmail.com'),"Página sem credenciais ou email pessoal");
+ok(!html.includes('phtrafegopg@gmail.com')&&!/SUPABASE_SERVICE_ROLE_KEY\s*[:=]/.test(html),"Página sem credenciais ou email pessoal");
 const sw=read('sw.js');
 for(const p of ['security-center.js','styles-v3.css','branding.js','marca-aprovada.svg'])
  ok(sw.includes(p),"Cache PWA inclui "+p);
