@@ -41,7 +41,7 @@
 
  // Tokens de acesso e atualização somente em memória; jamais em localStorage.
  function authHeaders(cfg, token){
-   return {"apikey":cfg.anon,"Authorization":"Bearer "+(token||cfg.anon),"Content-Type":"application/json"};
+   return {"apikey":cfg.anon,...(token?{"Authorization":"Bearer "+token}:{}),"Content-Type":"application/json"};
  }
  function setSession(body){
    if(!body?.access_token||!body?.refresh_token||!body?.user?.id)throw Error("Resposta de autenticação incompleta.");
