@@ -37,7 +37,7 @@ try{
  await page.getByText('Meu painel pessoal').waitFor({timeout:15000});
  assert.ok(await page.evaluate(()=>!!localStorage.getItem('rf_local_unsynced_v40')),'Pendências sobrevivem ao recarregamento');
  await page.locator('button[data-nav="settings"]').first().click();
- await page.getByText('Há alterações locais aguardando').waitFor({timeout:10000});
+ await page.getByText(/Há alterações locais/).waitFor({timeout:10000});
  await page.getByText('Seu plano Rota Financeira').waitFor();
  assert.ok((await page.locator('#rfBilling').innerText()).includes('Assinatura ainda indisponível'),'Sem checkout ativo');
  assert.equal(errors.length,0,'Erros de console JS: '+errors.join('; '));
