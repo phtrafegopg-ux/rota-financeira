@@ -25,6 +25,7 @@
    inFlight=true;
    target.textContent="Consultando classificação verificada...";
    try{
+     if(window.rfEnsureAuth)await window.rfEnsureAuth();
      const q="/rest/v1/rf_weekly_rankings?select=alias,points,week_start&week_start=eq."+
        encodeURIComponent(weekStart())+"&order=points.desc&limit=10";
      const response=await fetch(cfg.url+q,{

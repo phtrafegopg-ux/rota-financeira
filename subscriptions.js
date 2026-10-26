@@ -15,6 +15,7 @@
    if(!cloudSession){el.textContent="Sem sessão de nuvem. Plano ainda não identificado.";return}
    const cfg=getCloudCfg();
    try{
+     if(window.rfEnsureAuth)await window.rfEnsureAuth();
      const url=cfg.url+"/rest/v1/rf_subscriptions?select=plan,status,period_end&user_id=eq."+
       encodeURIComponent(cloudSession.user);
      const r=await fetch(url,{headers:cloudHeaders(cloudSession.token),cache:"no-store"});
