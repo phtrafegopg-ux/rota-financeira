@@ -18,6 +18,11 @@ try{
  await page.getByText('Meu painel pessoal').waitFor({timeout:15000});
  await page.getByText('Suas corridas em números').waitFor({timeout:10000});
  assert.equal(await page.locator('.rf-bar-col').count(),7,'Gráfico móvel precisa de sete barras');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"Layout móvel não pode ter rolagem horizontal");
+ await page.setViewportSize({width:1280,height:850});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"Layout desktop não pode ter rolagem horizontal");
+ assert.equal(await page.locator('.rf-insights').count(),1,"Card desktop preservado");
+ await page.setViewportSize({width:390,height:850});
  assert.ok(!(await page.locator('#app').innerText()).includes('Bradesco'),'Não exibir dados financeiros de outro usuário');
  await page.evaluate(async()=>{
    data.entries.push({type:'uber',date:dt(),gross:220,fuel:30,fee:15,other:5,platform:'Uber'});
