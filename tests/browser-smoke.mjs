@@ -11,6 +11,7 @@ try{
  const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto('http://127.0.0.1:8765/index.html',{waitUntil:'networkidle',timeout:30000});
+ console.log("DIAG",JSON.stringify({url:page.url(),title:await page.title(),body:(await page.locator('body').innerText()).slice(0,600),errors,hasCrypto:await page.evaluate(()=>!!crypto?.subtle),scripts:await page.locator('script').count()}));
  await page.locator('[data-security="setup"] input[name="password"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="setup"] input[name="confirm"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="setup"] button[type="submit"]').click();
