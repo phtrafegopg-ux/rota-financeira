@@ -53,3 +53,14 @@
 - Assinaturas: checkout, webhooks, cancelamentos, suporte e obrigações jurídicas validadas.
 
 **Não coloque dados pessoais no GitHub**, pois o repositório é público.
+
+
+## Reforços 3.2 — validação antes da nuvem
+
+- \`tests/sql/02_rls_cases.sql\` executado contra PostgreSQL 16 isolado em GitHub Actions: usuários A/B, atualização CAS, bloqueio de escrita direta do cliente e isolamento de assinaturas.
+- \`tests/cloud-flow.mjs\` verifica fluxo de login simulado, conteúdo cifrado, renovação do token em memória, conflitos e troca acidental de usuário.
+- Token JWT e refresh token nunca são gravados em localStorage; é necessário login novamente quando a página é reaberta e a sessão foi encerrada.
+- Consentimento de backup automático é vinculado à conta e ao projeto Supabase. Não é reutilizado entre diferentes contas no mesmo navegador.
+- O aplicativo bloqueia o envio de cofre previamente vinculado a conta distinta. A restauração de uma conta diferente exige confirmação explícita e senha do cofre.
+- Segurança de produção ainda depende de testes E2E contra projeto **real** do Supabase, revisão das políticas de backup e monitoramento operacional.
+- SQL/testes não significam que o projeto Supabase do usuário já está criado ou conectado.
