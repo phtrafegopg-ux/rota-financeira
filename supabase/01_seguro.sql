@@ -51,6 +51,12 @@ begin
    raise exception 'INVALID_ENCRYPTED_VAULT' using errcode = '22023';
  end if;
 
+ if p_expected_revision <> 0 and not exists (
+   select 1 from public.finance_vault where user_id = current_user_id
+ ) then
+   raise exception 'RF_REVISION_CONFLICT' using errcode = 'P0001';
+ end if;
+
  return query
  insert into public.finance_vault as fv(user_id, vault, revision, updated_at)
  values(current_user_id, p_vault, 1, now())
@@ -86,5 +92,21 @@ create policy rf_read_official_ranking
  on public.rf_weekly_rankings for select to authenticated using (true);
 -- Inserções e atualizações são exclusivas da operação administrativa,
 -- após revisão independente dos comprovantes e dos consentimentos.
+
+-- Status de assinatura: somente sistemas de cobrança autorizados alteram.
+-- Nunca marcar uma assinatura PRO com JavaScript do celular.
+create table if not exists public.rf_subscriptions (
+ user_id uuid primary key references auth.users(id) on delete cascade,
+ plan text not null default 'free' check(plan in ('free','pro')),
+ status text not null default 'inactive' check(status in ('inactive','trialing','active','past_due','cancelled')),
+ period_end timestamptz,
+ updated_at timestamptz not null default now()
+);
+alter table public.rf_subscriptions enable row level security;
+revoke all on public.rf_subscriptions from public, anon, authenticated;
+grant select on public.rf_subscriptions to authenticated;
+drop policy if exists rf_subscription_owner_read on public.rf_subscriptions;
+create policy rf_subscription_owner_read on public.rf_subscriptions
+ for select to authenticated using ((select auth.uid())=user_id);
 
 commit;
