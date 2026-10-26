@@ -30,6 +30,12 @@ ok(sql.includes('security definer')&&sql.includes('auth.uid()'),"RPC vinculada a
 ok(html.includes('online-ranking.js')&&html.includes('subscriptions.js'),"Liga e planos integrados");
 ok(read('online-ranking.js').includes('rf_weekly_rankings'),"Ranking usa somente resultados oficiais");
 ok(!read('subscriptions.js').includes('service_role'),"Nenhuma chave privada na consulta do plano");
+const cloudCfg=read('cloud-config.js');
+ok(html.includes('<script src="./cloud-config.js" defer></script>'),"Carrega configuração de produção");
+ok(sw.includes('cloud-config.js'),"Cache PWA inclui configuração de produção");
+ok(cloudCfg.includes('sb_publishable_')&&!cloudCfg.includes('sb_secret_'),"Usa somente chave pública do Supabase");
+ok(cloudCfg.includes('phtrafegopg-ux.github.io'),"Configuração limitada ao domínio de produção");
+ok(cloudCfg.includes('readOnly=true'),"Projeto protegido contra alteração acidental");
 const manifest=JSON.parse(read('manifest.webmanifest'));
 ok(manifest.scope==='./'&&manifest.display==='standalone',"Manifest instalável");
 console.log(fails?'Falhas: '+fails:'Todas verificações estáticas passaram.');
