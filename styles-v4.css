@@ -1,0 +1,66 @@
+/* Rota Financeira 4.0 — painel financeiro premium, sem dependências. */
+:root{
+ --rf-mint:#75f0bb;
+ --rf-teal:#123c35;
+ --rf-blue:#80bdff;
+ --rf-border:rgba(155,215,209,.16);
+}
+body{
+ background:
+  radial-gradient(ellipse 75% 28% at 70% -8%,rgba(69,187,156,.16),transparent 80%),
+  radial-gradient(ellipse 65% 45% at 5% 45%,rgba(40,110,136,.09),transparent 80%),
+  #071418;
+}
+.head{padding-top:max(24px,env(safe-area-inset-top));}
+.brand strong{font-weight:800;letter-spacing:-.032em;}
+.panel{padding:clamp(15px,3.8vw,24px);border-color:var(--rf-border);box-shadow:0 10px 30px rgba(0,0,0,.1);}
+.hero{background:linear-gradient(124deg,#194b3e 0%,#102e36 82%);border:1px solid rgba(131,239,188,.34);}
+.hero .big{font-size:clamp(29px,6.7vw,45px);}
+.btn,.field input,.field select,.field textarea{min-height:43px;}
+.head .gear{width:45px;height:45px;}
+.rf-insights{position:relative;overflow:hidden;background:linear-gradient(150deg,#122c30,#0e2329 66%,#0c1e25);border:1px solid rgba(106,213,181,.28)}
+.rf-insights:before{content:"";pointer-events:none;position:absolute;width:225px;height:225px;right:-135px;top:-140px;border-radius:50%;background:rgba(88,228,172,.085);filter:blur(8px)}
+.rf-insights-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;position:relative}
+.rf-insights-header h2{font-size:clamp(18px,3.5vw,22px);letter-spacing:-.035em;line-height:1.2;margin:6px 0}
+.rf-insights-header p{margin:0}
+.rf-insights-icon{background:linear-gradient(145deg,#2f856e,#194e45);color:#b2ffda;border:1px solid #418a73;font-size:25px;display:grid;place-items:center;border-radius:14px;min-width:45px;height:45px}
+.rf-insight-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:20px 0 17px}
+.rf-kpi{background:rgba(9,26,31,.64);border:1px solid rgba(155,215,209,.16);border-radius:15px;min-width:0;padding:15px 13px}
+.rf-kpi span{display:block;color:#b2c9ca;font-size:11px;line-height:1.4;margin-bottom:8px;font-weight:600}
+.rf-kpi strong{display:block;color:#ecfffa;font-weight:820;letter-spacing:-.04em;font-size:clamp(17px,3.4vw,22px);overflow-wrap:anywhere;line-height:1.25;font-variant-numeric:tabular-nums}
+.rf-kpi-primary{background:linear-gradient(135deg,rgba(36,121,94,.52),rgba(12,56,52,.75));border-color:rgba(126,251,185,.38)}
+.rf-kpi-primary strong{color:#acffd5}
+.rf-net-panel{background:rgba(5,20,27,.52);border:1px solid rgba(141,198,194,.14);border-radius:14px;padding:13px 14px 15px}
+.rf-inline-stats{display:flex;justify-content:space-between;gap:12px;align-items:center;color:#becfd0;font-size:12px}
+.rf-inline-stats strong{color:#a6ffdc;font-size:15px}
+.rf-track{margin-top:10px;height:9px;border-radius:99px;background:#25413f;overflow:hidden}
+.rf-track span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#1bb887,#a4ffd5);transition:width .25s ease}
+.rf-chart-head{margin:20px 0 10px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px}
+.rf-chart-head h3{font-size:13px;margin:0;letter-spacing:-.005em}
+.rf-chart-head small{font-size:11px;color:#9ebdbf}
+.rf-chart{height:155px;border:1px solid rgba(148,197,190,.1);background:linear-gradient(transparent 24%,rgba(170,206,200,.06) 25%,transparent 26%,transparent 49%,rgba(170,206,200,.06) 50%,transparent 51%,transparent 74%,rgba(170,206,200,.06) 75%,transparent 76%);border-radius:13px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:stretch;padding:11px 7px 5px;gap:6px}
+.rf-bar-col{min-width:0;height:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+.rf-bar-v{height:116px;max-width:28px;width:72%;display:flex;align-items:flex-end}
+.rf-bar-fill{display:block;width:100%;border-radius:7px 7px 3px 3px;background:linear-gradient(180deg,#8ff8c3,#2b9e8a);box-shadow:0 0 14px #49cf9e19}
+.rf-bar-day{font-size:10px;color:#b6c8ca;line-height:1}
+.rf-insights-foot{color:#94b1b6;font-size:11px;line-height:1.65;margin:15px 0 0}
+.rf-security-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+.rf-security-summary>div{background:#13332f;border:1px solid rgba(110,213,167,.17)}
+.rf-security-summary strong{font-size:12px;color:#a9efcb}
+.rf-security-summary span{font-size:12px}
+.nav{padding-bottom:max(7px,env(safe-area-inset-bottom));}
+.nav button{min-height:55px;font-weight:700;letter-spacing:-.015em}
+.nav button.on{color:#a8f9ce}
+@media(min-width:720px){
+ .rf-insight-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .rf-kpi{padding:18px}
+ .rf-chart{height:180px}
+ .rf-bar-v{height:140px}
+ .rf-bar-v{max-width:38px}
+}
+@media(max-width:365px){
+ .rf-kpi{padding:12px 10px}
+ .rf-kpi strong{font-size:16px}
+ .rf-insights-header h2{font-size:18px}
+}
+@media(prefers-reduced-motion:reduce){.rf-track span{transition:none}}
