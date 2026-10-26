@@ -151,6 +151,10 @@ try{
  await page.locator('[data-secure="sync-now"]').click();
  await page.waitForFunction(()=>window.rfSecurityStatus().error.includes('outra conta'),{timeout:10000});
  assert.equal(uploads,1,'outro usuário não recebeu dados');
+ await page.locator('[data-secure="logout-cloud"]').click();
+ assert.equal(await page.evaluate(()=>cloudSession),null,"Sair da nuvem apaga a sessão da memória");
+ assert.equal(await page.evaluate(()=>Boolean(vaultKey)),true,"Sair da nuvem não destrava nem apaga cofre local");
+ assert.equal(await page.evaluate(()=>window.rfSecurityStatus().autoSync),false,"Sem upload automático após logout");
  assert.equal(jsErrors.length,0,'Erros JavaScript: '+jsErrors.join('; '));
  console.log('PASS — login Supabase simulado, backup AES, JWT refresh, CAS e vínculo de conta.');
 } finally {
