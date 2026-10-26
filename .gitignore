@@ -1,0 +1,16 @@
+# Nunca versionar dados pessoais nem chaves privadas
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.jks
+*.sqlite
+*.db
+backup*
+meus_dados*
+*_privado.json
+*.secret
+node_modules/

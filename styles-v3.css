@@ -1,0 +1,83 @@
+/* Rota Financeira · Design system 3.1 */
+:root{
+ --bg:#071216;--panel:#102026;--panel2:#142a30;--nav:#0b1b21;
+ --line:#25414a;--text:#f2fbf8;--muted:#a8c0c5;
+ --mint:#5ce5a9;--mint-d:#0d4536;--amber:#ffd28c;
+ --danger:#ff979b;--blue:#88caf5;
+ color-scheme:dark;
+}
+html{background:var(--bg)}
+body{
+ background:radial-gradient(ellipse at 20% -12%,rgba(19,106,85,.24),transparent 52%),
+ radial-gradient(ellipse at 90% 23%,rgba(35,99,121,.12),transparent 47%),var(--bg);
+ line-height:1.55;letter-spacing:.01em;
+}
+.app{max-width:830px}
+.head{padding-top:25px;gap:15px}
+.brand{min-width:0}
+.brand strong{font-size:19px;letter-spacing:-.035em}
+.brand .eyebrow{letter-spacing:.16em;color:#abd5c8}
+.mark{border:1px solid rgba(122,246,190,.22);background:#12392f;box-shadow:0 6px 28px #0005}
+.panel{
+ border-radius:22px;
+ border:1px solid rgba(124,173,174,.17);
+ background:linear-gradient(157deg,rgba(22,43,50,.98),rgba(14,29,35,.97));
+ box-shadow:0 10px 30px rgba(0,0,0,.13);
+}
+.hero{
+ background:linear-gradient(127deg,#144538,#14363d 70%,#112c3e);
+ border-color:rgba(99,230,176,.34);
+ box-shadow:0 18px 34px #0004,inset 0 1px 0 #ffffff12;
+}
+.hero .big{font-weight:850;letter-spacing:-.045em}
+.tilevalue{letter-spacing:-.025em}
+.h2,.h3{letter-spacing:-.022em}
+.head .gear,.iconbtn{
+ background:#152d32;border:1px solid #35515a;
+ box-shadow:0 3px 10px #0002;
+}
+.nav{
+ background:rgba(10,29,34,.97);backdrop-filter:blur(18px);
+ -webkit-backdrop-filter:blur(18px);
+ border-top:1px solid #355552;
+ border-radius:20px 20px 0 0;
+ box-shadow:0 -9px 34px #0007;
+}
+.nav button{border-radius:13px;transition:color .2s,background .2s,transform .2s}
+.nav button.on{background:#1d483d;color:#a6ffe0}
+.nav .symbol{font-size:21px}
+.btn{border-radius:13px;transition:filter .18s,transform .18s;box-shadow:0 3px 12px #0002}
+.btn:hover{filter:brightness(1.08)}
+.btn:active,.nav button:active{transform:scale(.98)}
+.btn:disabled{opacity:.48;cursor:not-allowed}
+.field input,.field select,.field textarea{
+ background:#0a1b21;border:1px solid #34505a;border-radius:12px;color:var(--text);
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#78eaba;box-shadow:0 0 0 3px #4ace9c29}
+:where(a,button,input,textarea,select):focus-visible{outline:3px solid #8df8c7;outline-offset:3px}
+.notice{border-radius:14px}
+.notice.mint-note{background:#123d33}
+.eyebrow{font-weight:750}
+.sheet{border-radius:23px 23px 0 0;background:#102229}
+.seg{background:#091c22;border:1px solid #233f43;border-radius:13px;padding:4px}
+.seg button{border-color:transparent;border-radius:10px}
+.rf-security-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:12px 0}
+.rf-security-summary>div{border:1px solid #295148;background:#0d322d;padding:12px;border-radius:13px}
+.rf-security-summary strong{display:block;color:#a1f3cf;font-size:12px}
+.rf-security-summary span{font-size:12px;color:#b9d0d0}
+.rf-hint{font-size:12px;color:#b3c9cf;line-height:1.55}
+.rf-badge{display:inline-block;border-radius:99px;padding:3px 9px;background:#225a48;color:#c2ffdf;font-size:11px;font-weight:750}
+.rf-risk{background:#473226!important;border-color:#75543b!important;color:#ffdaa7!important}
+@media(min-width:600px){
+ .app{padding:0 28px 125px}
+ .panel{padding:22px}
+ .nav{max-width:790px}
+}
+@media(max-width:360px){
+ .rf-security-summary{grid-template-columns:1fr}
+ .brand strong{font-size:16px}
+ .head{gap:8px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
