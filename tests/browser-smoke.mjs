@@ -20,7 +20,7 @@ try{
  await page.getByText('Central de proteção').waitFor({timeout:10000});
  const checkbox=page.locator('#rfAutosync');
  await checkbox.check();
- assert.equal(await page.evaluate(()=>localStorage.getItem('rf_autobackup_optin_v31')),'1');
+ assert.notEqual(await page.evaluate(()=>localStorage.getItem('rf_autobackup_optin_v31')),'1','Não pode ligar backup sem conta autenticada.');
  await page.reload({waitUntil:'networkidle'});
  await page.locator('[data-security="unlock"] input[name="password"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="unlock"] button[type="submit"]').click();
