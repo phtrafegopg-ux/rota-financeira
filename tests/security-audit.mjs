@@ -8,15 +8,18 @@ const ok=(condition,name)=>{
 };
 const html=read('index.html');
 const csp=html.match(/Content-Security-Policy" content="([^"]+)"/)?.[1]||'';
-const script=html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
-const sha=script&&crypto.createHash('sha256').update(script).digest('base64');
-ok(!!script&&csp.includes("'sha256-"+sha+"'"),"Hash CSP coincide com script local");
-ok(csp.includes("script-src 'self'"),"CSP permite apenas scripts próprios e inline assinado");
+const core=read('core.js');
+ok(!html.includes('<script>')&&!/<script(?![^>]*src=)/.test(html),"Nenhum script JavaScript inline");
+ok(html.includes('<script src="./core.js" defer></script>'),"Código principal externo carregado");
+const scriptPolicy=(csp.match(/(?:^|;)\s*script-src ([^;]+)/)||[])[1]||"";
+ok(scriptPolicy.trim()==="'self'","CSP permite somente JavaScript próprio, sem inline ou domínio externo");
+ok(!/Bradesco|Poupex|2026-11/.test(core),"Core público sem referências financeiras pessoais e datas fixas");
+ok(csp.includes("script-src 'self'"),"CSP restringe origem dos scripts");
 ok(csp.includes("object-src 'none'"),"Objetos bloqueados pela CSP");
-ok(html.includes('security-center.js')&&html.includes('styles-v3.css'),"Camada segura e visual carregadas");
+ok(html.includes('security-center.js')&&html.includes('styles-v3.css')&&html.includes('styles-v4.css')&&html.includes('insights.js'),"Camada segura e visual carregadas");
 ok(!html.includes('phtrafegopg@gmail.com')&&!/SUPABASE_SERVICE_ROLE_KEY\s*[:=]/.test(html),"Página sem credenciais ou email pessoal");
 const sw=read('sw.js');
-for(const p of ['security-center.js','styles-v3.css','branding.js','marca-aprovada.svg'])
+for(const p of ['security-center.js','core.js','insights.js','styles-v4.css','styles-v3.css','branding.js','marca-aprovada.svg'])
  ok(sw.includes(p),"Cache PWA inclui "+p);
 const js=read('security-center.js');
 ok(js.includes('rf_write_vault')&&js.includes('p_expected_revision'),"Backup chama RPC transacional");
@@ -36,6 +39,8 @@ ok(sw.includes('cloud-config.js'),"Cache PWA inclui configuração de produção
 ok(cloudCfg.includes('sb_publishable_')&&!cloudCfg.includes('sb_secret_'),"Usa somente chave pública do Supabase");
 ok(cloudCfg.includes('phtrafegopg-ux.github.io'),"Configuração limitada ao domínio de produção");
 ok(cloudCfg.includes('readOnly=true'),"Projeto protegido contra alteração acidental");
+ok(read('insights.js').includes('renderHome')&&read('insights.js').includes('Líquido das plataformas'),"Insights financeiros locais");
+ok(js.includes('rf_local_unsynced_v40')&&js.includes('logout-cloud'),"Estado pendente e encerramento de sessão");
 const manifest=JSON.parse(read('manifest.webmanifest'));
 ok(manifest.scope==='./'&&manifest.display==='standalone',"Manifest instalável");
 console.log(fails?'Falhas: '+fails:'Todas verificações estáticas passaram.');

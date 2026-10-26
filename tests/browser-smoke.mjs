@@ -16,6 +16,21 @@ try{
  await page.locator('[data-security="setup"] input[name="confirm"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="setup"] button[type="submit"]').click();
  await page.getByText('Meu painel pessoal').waitFor({timeout:15000});
+ await page.getByText('Suas corridas em números').waitFor({timeout:10000});
+ assert.equal(await page.locator('.rf-bar-col').count(),7,'Gráfico móvel precisa de sete barras');
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"Layout móvel não pode ter rolagem horizontal");
+ await page.setViewportSize({width:1280,height:850});
+ assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,"Layout desktop não pode ter rolagem horizontal");
+ assert.equal(await page.locator('.rf-insights').count(),1,"Card desktop preservado");
+ await page.setViewportSize({width:390,height:850});
+ assert.ok(!(await page.locator('#app').innerText()).includes('Bradesco'),'Não exibir dados financeiros de outro usuário');
+ await page.evaluate(async()=>{
+   data.entries.push({type:'uber',date:dt(),gross:220,fuel:30,fee:15,other:5,platform:'Uber'});
+   await save(true);
+   render();
+ });
+ assert.ok((await page.locator('.rf-insights').innerText()).includes('170,00'),'Indicador calcula receita líquida real');
+ assert.ok(await page.evaluate(()=>!!localStorage.getItem('rf_local_unsynced_v40')),'Gravação local marca alteração pendente');
  await page.locator('button[data-nav="settings"]').first().click();
  await page.getByText('Central de proteção').waitFor({timeout:10000});
  const checkbox=page.locator('#rfAutosync');
@@ -25,6 +40,11 @@ try{
  await page.locator('[data-security="unlock"] input[name="password"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="unlock"] button[type="submit"]').click();
  await page.getByText('Meu painel pessoal').waitFor({timeout:15000});
+ assert.ok(await page.evaluate(()=>!!localStorage.getItem('rf_local_unsynced_v40')),'Pendências sobrevivem ao recarregamento');
+ await page.locator('button[data-nav="settings"]').first().click();
+ await page.getByText(/Há alterações locais/).waitFor({timeout:10000});
+ await page.getByText('Seu plano Rota Financeira').waitFor();
+ assert.ok((await page.locator('#rfBilling').innerText()).includes('Assinatura ainda indisponível'),'Sem checkout ativo');
  assert.equal(errors.length,0,'Erros de console JS: '+errors.join('; '));
  console.log('PASS Chrome mobile: cofre, senha, central, opção de backup, recarga.');
  await page.close();
