@@ -52,7 +52,7 @@ try{
  await page.locator('form[data-security="setup"] input[name="confirm"]').fill('Senha-Forte-Exclusiva-2026!');
  await page.locator('form[data-security="setup"] button[type="submit"]').click();
  await page.getByText('Meu painel pessoal').waitFor();
- await page.locator('button[data-nav="settings"]').click();
+ await page.locator('button[data-nav="settings"]').first().click();
  await page.getByText('Central de proteção').waitFor();
  // Alterações reais do cofre; a cópia enviada deve ser opaca.
  await page.evaluate(async()=>{
