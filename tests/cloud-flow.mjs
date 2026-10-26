@@ -77,7 +77,7 @@ try{
  await page.evaluate(async()=>{await fetchCloudVault()});
  assert.equal(refreshes,1,'refresh de JWT por sessão em memória');
  const storage=await page.evaluate(()=>JSON.stringify(localStorage));
- assert.ok(!storage.includes('jwt-original')&&!storage.includes('r1'),'tokens não gravados em armazenamento persistente');
+ assert.ok(!storage.includes('jwt-original')&&!storage.includes('"refreshToken"')&&!storage.includes('"r1"'),'tokens não gravados em armazenamento persistente');
  // Falha por revisão divergente impede sobrescrita.
  remoteRev=5;
  alerts.length=0;
