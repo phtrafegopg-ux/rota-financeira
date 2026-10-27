@@ -1,5 +1,6 @@
 name: Testes de isolamento financeiro (PostgreSQL)
 on:
+  workflow_call:
   push:
     branches: [main, hardening-backup-e-isolamento-v32]
   pull_request:

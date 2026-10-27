@@ -1,5 +1,6 @@
 name: Verificações de segurança
 on:
+  workflow_call:
   push:
     branches: [main, seguranca-visual-v3-1, hardening-backup-e-isolamento-v32]
   pull_request:
@@ -23,6 +24,7 @@ jobs:
       - run: node --check online-ranking.js
       - run: node --check subscriptions.js
       - run: node tests/security-audit.mjs
+      - run: node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs
       - run: npm install --no-save playwright@1.56.1
       - run: npx playwright install chromium
       - run: node tests/browser-smoke.mjs

@@ -4,7 +4,13 @@
  "use strict";
  const OPT="rf_autobackup_optin_v31",BASE="rf_revision_anchor_v31",PENDING="rf_local_unsynced_v40";
  let dirty=Boolean(localStorage.getItem(PENDING)), timer=null, busy=false, lastError="",remoteRevision=null,mutationSeq=0;
- let refreshInFlight=null;
+ let refreshInFlight=null, sessionEpoch=0;
+ // Every login, logout and lock invalidates outstanding asynchronous work.
+ const contextStamp=()=>({epoch:sessionEpoch,identity:cloudIdentity(),key:vaultKey});
+ const assertContext=stamp=>{
+   if(!vaultKey||stamp.key!==vaultKey||stamp.epoch!==sessionEpoch||stamp.identity!==cloudIdentity())
+     throw Error("A sessão ou o cofre mudou. Operação cancelada; tente novamente.");
+ };
  const readJSON=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key))??fallback}catch{return fallback}};
  const cloudIdentity=()=>{const c=getCloudCfg();return cloudSession&&c.url?c.url+"|"+cloudSession.user:null};
  const anchor=()=>{const k=cloudIdentity();const a=readJSON(BASE,null);return k&&a?.identity===k?a:null};
@@ -60,15 +66,18 @@
    if(Date.now() < (cloudSession.expiresAt||0)-60000)return;
    if(!cloudSession.refreshToken)throw Error("Sessão expirada. Entre novamente.");
    if(!refreshInFlight){
-     refreshInFlight=(async()=>{
+     const previousSession=cloudSession, stamp=contextStamp();
+     const work=(async()=>{
        const cfg=getCloudCfg();
        const res=await fetch(cfg.url+"/auth/v1/token?grant_type=refresh_token",{
          method:"POST",
          headers:authHeaders(cfg),
-         body:JSON.stringify({refresh_token:cloudSession.refreshToken}),
+         body:JSON.stringify({refresh_token:previousSession.refreshToken}),
          cache:"no-store"
        });
        const body=await res.json().catch(()=>({}));
+       assertContext(stamp);
+       if(cloudSession!==previousSession)throw Error("A sessão mudou durante a renovação.");
        if(!res.ok||!body.access_token){
          cloudSession=null;
          throw Error("Sua sessão de nuvem expirou. Entre novamente.");
@@ -79,20 +88,25 @@
          cloudSession=null;
          throw Error("Conta alterada inesperadamente. Entre novamente.");
        }
-     })().finally(()=>{refreshInFlight=null});
+     })();
+     refreshInFlight=work;
+     work.finally(()=>{if(refreshInFlight===work)refreshInFlight=null}).catch(()=>{});
    }
    return refreshInFlight;
  }
  window.rfEnsureAuth=ensureSession;
  const originalVaultPage=vaultPage;
  vaultPage=function(){
+   sessionEpoch++;
    cloudSession=null;
    refreshInFlight=null;
    clearTimeout(timer);
    originalVaultPage();
  };
  async function apiFetch(path, options={}){
+   const stamp=contextStamp();
    await ensureSession();
+   assertContext(stamp);
    const cfg=getCloudCfg();
    if(!cfg?.url||!cfg?.anon)throw Error("Configure a nuvem em Ajustes.");
    const r=await fetch(cfg.url+path,{
@@ -100,6 +114,7 @@
      headers:{...cloudHeaders(cloudSession.token),...(options.headers||{})}
    });
    const json=await r.json().catch(()=>({}));
+   assertContext(stamp);
    if(!r.ok){
      if(r.status===401||r.status===403)throw Error("Sessão expirada ou banco sem permissão. Entre na conta novamente.");
      throw Error(json.message||json.error||json.code||"Falha na nuvem: "+r.status);
@@ -114,8 +129,10 @@
    if(busy)return false;
    if(!cloudSession){if(manual)alert("Entre na sua conta de nuvem antes de sincronizar.");return false}
    busy=true;lastError="";
+   const stamp=contextStamp();
    try{
      await waitSave();
+     assertContext(stamp);
      if(boundToAnotherAccount())throw Error("Este cofre já está vinculado a outra conta de nuvem. Não enviaremos seus dados para uma conta diferente. Exporte um backup e restaure conscientemente o cofre da conta desejada.");
      const local=anchor();
      const remote=await fetchCloudVault();
@@ -129,11 +146,13 @@
      if(!local&&rev!==0)throw Error("Backup existente não reconhecido. Restaure primeiro.");
      const includedMutation=mutationSeq;
      const blob=await portableVault(); // Snapshot criptografado; alterações posteriores disparam outra rodada.
+     assertContext(stamp);
      const reply=await apiFetch("/rest/v1/rpc/rf_write_vault",{
        method:"POST",body:JSON.stringify({p_vault:blob,p_expected_revision:rev})
      });
      const item=Array.isArray(reply)?reply[0]:reply;
      if(!Number.isSafeInteger(Number(item?.revision)))throw Error("O servidor não confirmou a nova revisão.");
+     assertContext(stamp);
      setAnchor(Number(item.revision));
      dirty=mutationSeq!==includedMutation;
      if(!dirty)localStorage.removeItem(PENDING);
@@ -196,7 +215,7 @@
    button.disabled=true;
    button.textContent="Verificando e restaurando…";
    warn.style.display="none";
-   const currentAccount=cloudIdentity();
+   const currentAccount=cloudIdentity(), restoreStamp=contextStamp();
    try{
      if(!vaultKey||!currentAccount)throw Error("A sessão foi encerrada. Desbloqueie e entre na nuvem novamente.");
      // Buscar novamente no momento da confirmação: nunca restaurar cópia obsoleta.
@@ -207,6 +226,7 @@
      if(cloudIdentity()!==currentAccount)throw Error("A conta mudou durante a operação. Restauração cancelada.");
      const salt=unbase64(row.vault.salt);
      const key=await deriveKey(originalPassword,salt);
+     assertContext(restoreStamp);
      let restored;
      try{
        restored=await decryptState(row.vault,key);
@@ -217,7 +237,8 @@
      await waitSave();
      if(cloudIdentity()!==currentAccount)throw Error("A conta mudou. Nada foi substituído.");
      clearTimeout(timer);
-     await restorePortableState(restored,key,salt);
+     assertContext(restoreStamp);
+     await restorePortableState(restored,key,salt,()=>assertContext(restoreStamp));
      setAnchor(Number(row.revision));
      mutationSeq++;
      dirty=false;
@@ -246,9 +267,12 @@
  // Cadastro e login usam Supabase Auth; refresh_token fica exclusivamente em memória.
  handleCloudForm=async function(form,mode){
    const button=form.querySelector('button[value="'+mode+'"]');
+   const loginEpoch=++sessionEpoch, loginKey=vaultKey;
+   cloudSession=null;refreshInFlight=null;clearTimeout(timer);
    if(button)button.disabled=true;
    try{
      if(!window.isSecureContext)throw Error("O login exige HTTPS.");
+     if(!vaultKey)throw Error("Desbloqueie o cofre antes do login.");
      const cfg={
        url:normalizeUrl(form.elements.url.value),
        anon:form.elements.anon.value.trim()
@@ -263,6 +287,7 @@
        body:JSON.stringify({email,password}),cache:"no-store"
      });
      const body=await res.json().catch(()=>({}));
+     if(!vaultKey||vaultKey!==loginKey||sessionEpoch!==loginEpoch)throw Error("Login cancelado: a sessão ou o cofre mudou.");
      if(!res.ok)throw Error(body.error_description||body.message||body.msg||"Falha na autenticação.");
      form.elements.password.value="";
      if(body.access_token){
@@ -284,7 +309,7 @@
      }
      render();
    }catch(e){alert("Nuvem: "+e.message)}
-   finally{if(button?.isConnected)button.disabled=false}
+   finally{form.elements.password.value="";if(button?.isConnected)button.disabled=false}
  };
  function schedule(){
    if(!enabled()||!cloudSession||!vaultKey)return;
@@ -338,6 +363,7 @@
    const btn=ev.target.closest("button[data-secure]");
    if(!btn)return;
    if(btn.dataset.secure==="logout-cloud"){
+     sessionEpoch++;
      clearTimeout(timer);
      cloudSession=null;
      refreshInFlight=null;

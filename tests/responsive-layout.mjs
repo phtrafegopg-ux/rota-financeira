@@ -5,7 +5,7 @@ import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const server=spawn('python3',['-m','http.server','8767','--bind','127.0.0.1'],{stdio:'ignore'});
+const server=spawn(process.env.PYTHON || 'python3',['-m','http.server','8767','--bind','127.0.0.1'],{stdio:'ignore'});
 const wait=ms=>new Promise(ok=>setTimeout(ok,ms));
 await wait(1100);
 let browser;
