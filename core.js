@@ -4,7 +4,7 @@ function initial(){return {version:2,leaguePlans:[],settings:{name:'Meu Controle
 
 let data=initial(),vaultKey=null,vaultSalt=null,saveQueue=Promise.resolve(),cloudSession=null,reminderBusy=false;let currentVault=null;let lastActivity=Date.now();
 const cleanState=o=>o&&typeof o==='object'&&Array.isArray(o.entries)&&Array.isArray(o.bills)&&Array.isArray(o.debts)&&Array.isArray(o.goals)&&Array.isArray(o.snapshots)&&o.settings&&typeof o.settings==='object';
-const base64=a=>btoa(String.fromCharCode(...new Uint8Array(a)));
+const base64=a=>{const bytes=new Uint8Array(a);let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(binary)};
 const unbase64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const saltNew=()=>crypto.getRandomValues(new Uint8Array(16));
 async function deriveKey(pass,salt){const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
@@ -62,11 +62,15 @@ async function expandedImages(state,key=vaultKey){
  return clone;
 }
 async function portableVault(){await waitSave();const expanded=await expandedImages(data);return packState(expanded,vaultKey,vaultSalt)}
-async function restorePortableState(state,key,salt){
+async function restorePortableState(state,key,salt,beforeCommit=()=>{}){
  if(!cleanState(state))throw Error('Cofre incompatível.');
+ const originalKey=vaultKey,originalState=data,originalQueue=saveQueue;
+ await waitSave();
  const candidate=await compactImages(state,key,true);
  if(!Array.isArray(candidate.leaguePlans))candidate.leaguePlans=[];
  const box=await packState(candidate,key,salt);
+ if(vaultKey!==originalKey||data!==originalState||saveQueue!==originalQueue)throw Error('O cofre mudou durante a restauração. Nada foi substituído.');
+ beforeCommit(); // Reject obsolete cloud restore before replacing the current vault.
  localStorage.setItem(VAULT,JSON.stringify(box));
  data=candidate;vaultKey=key;vaultSalt=salt;currentVault=box;render();return box;
 }

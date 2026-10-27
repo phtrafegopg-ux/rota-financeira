@@ -2,7 +2,7 @@ import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
 
-const server=spawn('python3',['-m','http.server','8766','--bind','127.0.0.1'],{stdio:'ignore'});
+const server=spawn(process.env.PYTHON || 'python3',['-m','http.server','8766','--bind','127.0.0.1'],{stdio:'ignore'});
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 await sleep(1100);
 let browser;
