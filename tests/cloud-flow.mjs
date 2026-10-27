@@ -57,8 +57,15 @@ try{
  // Alterações reais do cofre; a cópia enviada deve ser opaca.
  await page.evaluate(async()=>{
    data.settings.name='SEGREDO_FINANCEIRO_QUE_NAO_PODE_VAZAR';
+   const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;
+   canvas.getContext('2d').fillRect(0,0,2,2);
+   const image=canvas.toDataURL('image/png'),ref=proofRef();
+   await proofStorePut(ref,image);
+   data.entries.push({id:'proof-test',type:'uber',date:dt(),gross:220,fuel:30,fee:15,other:5,
+     platform:'Uber',proofs:[{imageRef:ref,sha256:'synthetic-proof'}]});
    await save(true);
  });
+ const originalImage=await page.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef));
  const cloud=page.locator('form[data-security="cloud"]');
  assert.equal(await cloud.count(),1);
  await cloud.locator('[name="url"]').fill('https://rota-test.supabase.co');
@@ -74,12 +81,14 @@ try{
  assert.equal(await page.evaluate(()=>window.rfSecurityStatus().dirty),false);
  // Recuperação de backup em computador separado, sem prompt()/confirm().
  const secondContext=await browser.newContext({viewport:{width:1280,height:800}});
+ let receiverUploads=0;
  await secondContext.addInitScript(()=>{
    window.prompt=()=>{throw Error("prompt() is not supported")};
    window.confirm=()=>{throw Error("confirm() is not supported")};
  });
  await secondContext.route("https://rota-test.supabase.co/**",async route=>{
    const req=route.request(),url=new URL(req.url());
+   if(url.pathname==='/rest/v1/rpc/rf_write_vault'&&req.method()==='POST')receiverUploads++;
    const headers={
      "access-control-allow-origin":"*",
      "access-control-allow-methods":"GET,POST,OPTIONS",
@@ -127,6 +136,12 @@ try{
  await restore.locator('button[type="submit"]').click();
  await pc.waitForFunction(()=>window.rfSecurityStatus?.().revision===1,{timeout:12000});
  assert.equal(await pc.evaluate(()=>data.settings.name),"SEGREDO_FINANCEIRO_QUE_NAO_PODE_VAZAR","cofre recuperado");
+ assert.equal(await pc.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),originalImage,
+   'comprovante recuperado em IndexedDB independente');
+ assert.equal(await page.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),originalImage,
+   'restauração no PC preserva imagem do contexto original');
+ assert.equal(uploads,1,'restauração no PC não envia backup');
+ assert.equal(receiverUploads,0,'destinatário não tenta enviar nenhum backup');
  assert.equal(await restore.count(),0,"formulário fechado após sucesso");
  assert.equal(await pc.evaluate(()=>window.rfSecurityStatus().autoSync),false,"sem envio automático após recuperação");
  assert.equal(pcErrors.length,0,"erros no PC: "+pcErrors.join("; "));
