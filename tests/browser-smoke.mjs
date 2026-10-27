@@ -78,6 +78,15 @@ try{
  await pc.locator('[data-security="setup"] button[type="submit"]').click();
  await pc.getByText('Meu painel pessoal').waitFor();
  await pc.locator('button[data-nav="settings"]').first().click();
+ const destinationProof=await pc.evaluate(async()=>{
+   const canvas=document.createElement('canvas');canvas.width=3;canvas.height=3;
+   const ctx=canvas.getContext('2d');ctx.fillStyle='red';ctx.fillRect(0,0,3,3);
+   const image=canvas.toDataURL('image/png'),ref=proofRef();
+   await proofStorePut(ref,image);
+   data.entries.push({id:'destination-proof',type:'uber',date:dt(),gross:100,fuel:0,fee:0,other:0,
+     platform:'Uber',proofs:[{imageRef:ref,sha256:'destination-synthetic-proof'}]});
+   await save(true);return {ref,image};
+ });
  const initial=await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
  async function importBackup(){
    await pc.locator('#importFile').setInputFiles(file);
@@ -85,9 +94,11 @@ try{
  }
  await importBackup();
  assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,'senha errada preserva destino');
+ assert.equal(await pc.evaluate(ref=>proofStoreRead(ref),destinationProof.ref),destinationProof.image,'senha errada preserva imagem do destino');
  password='Cofre-Teste-Seguro-2026!';cancel=true;
  await importBackup();
  assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,'cancelar preserva destino');
+ assert.equal(await pc.evaluate(ref=>proofStoreRead(ref),destinationProof.ref),destinationProof.image,'cancelar preserva imagem do destino');
  cancel=false;await importBackup();
  assert.equal(await pc.evaluate(()=>data.entries[0].id),'portable-test');
  assert.equal(await pc.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),image);

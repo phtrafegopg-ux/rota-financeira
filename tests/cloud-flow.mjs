@@ -81,12 +81,14 @@ try{
  assert.equal(await page.evaluate(()=>window.rfSecurityStatus().dirty),false);
  // Recuperação de backup em computador separado, sem prompt()/confirm().
  const secondContext=await browser.newContext({viewport:{width:1280,height:800}});
+ let receiverUploads=0;
  await secondContext.addInitScript(()=>{
    window.prompt=()=>{throw Error("prompt() is not supported")};
    window.confirm=()=>{throw Error("confirm() is not supported")};
  });
  await secondContext.route("https://rota-test.supabase.co/**",async route=>{
    const req=route.request(),url=new URL(req.url());
+   if(url.pathname==='/rest/v1/rpc/rf_write_vault'&&req.method()==='POST')receiverUploads++;
    const headers={
      "access-control-allow-origin":"*",
      "access-control-allow-methods":"GET,POST,OPTIONS",
@@ -139,6 +141,7 @@ try{
  assert.equal(await page.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),originalImage,
    'restauração no PC preserva imagem do contexto original');
  assert.equal(uploads,1,'restauração no PC não envia backup');
+ assert.equal(receiverUploads,0,'destinatário não tenta enviar nenhum backup');
  assert.equal(await restore.count(),0,"formulário fechado após sucesso");
  assert.equal(await pc.evaluate(()=>window.rfSecurityStatus().autoSync),false,"sem envio automático após recuperação");
  assert.equal(pcErrors.length,0,"erros no PC: "+pcErrors.join("; "));
