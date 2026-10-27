@@ -396,17 +396,24 @@ document.addEventListener('click',ev=>{const btn=ev.target.closest('button');if(
 document.addEventListener('change',async ev=>{
  if(ev.target.id!=='importFile')return;
  const input=ev.target,file=input.files?.[0];if(!file)return;
+ const importKey=vaultKey,importState=data;
+ const assertImportContext=()=>{
+  if(!vaultKey||vaultKey!==importKey||data!==importState)throw Error('O cofre mudou durante a importação. Nada foi substituído.');
+ };
  try{
   const parsed=JSON.parse(await file.text());await waitSave();
+  assertImportContext();
   if(parsed.schema===2&&parsed.ciphertext){
    const pass=prompt('Digite a senha do backup criptografado:');if(!pass)return;
    const salt=unbase64(parsed.salt),key=await deriveKey(pass,salt),state=await decryptState(parsed,key);
+   assertImportContext();
    if(!confirm('Substituir TODOS os registros atuais pelos dados deste backup?'))return;
-   await restorePortableState(state,key,salt);toast('Backup restaurado, incluindo os prints que estavam no arquivo.');
+   await restorePortableState(state,key,salt,assertImportContext);toast('Backup restaurado, incluindo os prints que estavam no arquivo.');
   }else{
    const candidate=parsed.state||parsed;if(!cleanState(candidate))throw Error('Backup inválido');
    if(!confirm('Importar backup antigo sem criptografia? Os registros atuais serão substituídos.'))return;
-   await restorePortableState(candidate,vaultKey,vaultSalt);toast('Backup antigo importado e protegido.');
+   assertImportContext();
+   await restorePortableState(candidate,vaultKey,vaultSalt,assertImportContext);toast('Backup antigo importado e protegido.');
   }
  }catch(err){console.error(err);alert('Falha ao restaurar: '+err.message+'\nOs dados anteriores não foram substituídos se a gravação falhou.')}finally{input.value=''}
 });

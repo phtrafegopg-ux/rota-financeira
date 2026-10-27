@@ -1,6 +1,10 @@
 import { chromium } from 'playwright';
 import { spawn } from 'node:child_process';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+const temporary=await fs.mkdtemp(path.join(os.tmpdir(),'rf-portable-test-'));
 const server=spawn(process.env.PYTHON || 'python3',['-m','http.server','8765','--bind','127.0.0.1'],{stdio:'ignore'});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 await sleep(1300);
@@ -45,10 +49,83 @@ try{
  await page.getByText(/Há alterações locais/).waitFor({timeout:10000});
  await page.getByText('Seu plano Rota Financeira').waitFor();
  assert.ok((await page.locator('#rfBilling').innerText()).includes('Assinatura ainda indisponível'),'Sem checkout ativo');
+ // Backup real pela interface, com prova cifrada no IndexedDB de origem.
+ const image=await page.evaluate(async()=>{
+   const canvas=document.createElement('canvas');canvas.width=2;canvas.height=2;
+   canvas.getContext('2d').fillRect(0,0,2,2);
+   const image=canvas.toDataURL('image/png'),ref=proofRef();
+   await proofStorePut(ref,image);
+   data.entries[0].id='portable-test';
+   data.entries[0].proofs=[{imageRef:ref,sha256:'synthetic-proof'}];
+   await save(true);return image;
+ });
+ const downloadEvent=page.waitForEvent('download');
+ await page.locator('[data-action="export"]').click();
+ const file=path.join(temporary,'portable.json');
+ await (await downloadEvent).saveAs(file);
+ const payload=await fs.readFile(file,'utf8');
+ assert.equal(JSON.parse(payload).schema,2);
+ assert.ok(!payload.includes(image)&&!payload.includes('portable-test'),'arquivo sem dados claros');
+ const receiver=await browser.newContext();
+ const pc=await receiver.newPage();
+ const pcErrors=[];pc.on('pageerror',e=>pcErrors.push(e.message));
+ let password='senha-errada',cancel=false;
+ pc.on('dialog',dialog=>dialog.type()==='prompt'?
+   dialog.accept(password):dialog.type()==='confirm'&&cancel?dialog.dismiss():dialog.accept());
+ await pc.goto('http://127.0.0.1:8765/index.html',{waitUntil:'networkidle'});
+ await pc.locator('[data-security="setup"] input[name="password"]').fill('Cofre-Destino-Temporario!');
+ await pc.locator('[data-security="setup"] input[name="confirm"]').fill('Cofre-Destino-Temporario!');
+ await pc.locator('[data-security="setup"] button[type="submit"]').click();
+ await pc.getByText('Meu painel pessoal').waitFor();
+ await pc.locator('button[data-nav="settings"]').first().click();
+ const initial=await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
+ async function importBackup(){
+   await pc.locator('#importFile').setInputFiles(file);
+   await pc.waitForFunction(()=>!document.getElementById('importFile')?.files.length);
+ }
+ await importBackup();
+ assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,'senha errada preserva destino');
+ password='Cofre-Teste-Seguro-2026!';cancel=true;
+ await importBackup();
+ assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,'cancelar preserva destino');
+ cancel=false;await importBackup();
+ assert.equal(await pc.evaluate(()=>data.entries[0].id),'portable-test');
+ assert.equal(await pc.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),image);
+ assert.equal(await page.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),image,'origem preservada');
+ // Bloqueio durante derivação da senha não pode reabrir o cofre nem substituir dados.
+ const beforeLock=await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
+ await pc.evaluate(()=>{
+   const original=deriveKey;
+   deriveKey=async(...args)=>{await new Promise(resolve=>window.releaseImport=resolve);return original(...args)};
+   const originalToast=toast;
+   toast=message=>{window.importFinished=true;originalToast(message)};
+   window.alert=()=>{window.importFinished=true};
+ });
+ await pc.locator('#importFile').setInputFiles(file);
+ await pc.waitForFunction(()=>!!window.releaseImport);
+ await pc.locator('[data-action="lock"]').click();
+ await pc.evaluate(()=>window.releaseImport());
+ await pc.waitForFunction(()=>window.importFinished);
+ assert.equal(await pc.evaluate(()=>vaultKey),null,'importação tardia não reabre cofre bloqueado');
+ assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),beforeLock,'importação tardia preserva armazenamento');
+ assert.deepEqual(pcErrors,[]);
+ await receiver.close();
+ // Imagem ausente deve impedir exportação incompleta, sem download falso.
+ let badDownload=false;page.on('download',()=>badDownload=true);
+ const beforeFailure=await page.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
+ await page.evaluate(async()=>{await proofStoreDelete(data.entries[0].proofs[0].imageRef)});
+ const exportError=page.waitForEvent('dialog');
+ await page.locator('[data-action="export"]').click();
+ const errorDialog=await exportError;
+ assert.match(errorDialog.message(),/Não foi possível preparar o backup completo/);
+ await errorDialog.accept();
+ assert.equal(badDownload,false,'não baixar backup incompleto');
+ assert.equal(await page.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),beforeFailure);
  assert.equal(errors.length,0,'Erros de console JS: '+errors.join('; '));
  console.log('PASS Chrome mobile: cofre, senha, central, opção de backup, recarga.');
  await page.close();
 } finally {
  await browser?.close();
  server.kill();
+ await fs.rm(temporary,{recursive:true,force:true});
 }
