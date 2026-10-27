@@ -8,7 +8,7 @@
 
 **Tech Stack:** JavaScript/Web Crypto, IndexedDB, service worker, Node, Playwright 1.56.1 e Chromium; CI com Node 22 e PostgreSQL 16.
 
-**Spec:** escopo abaixo, escolhido pelo agente após o usuário autorizar conduzir o planejamento e concluir o trabalho no Codex em 27/10/2026. Não autoriza merge, publicação ou mudanças em produção.
+**Spec:** escopo abaixo, escolhido pelo agente após o usuário autorizar conduzir o planejamento e concluir o trabalho no Codex em 27/10/2026. Inicialmente sem merge/publicação; posteriormente o responsável autorizou integrar os dois PRs e acompanhar a publicação ao responder “conclua tudo”. Alterações no Supabase de produção continuam fora do escopo.
 
 ## Escopo e escolhas
 
@@ -39,11 +39,11 @@ Esta entrega conclui uma etapa técnica da beta, não certifica lançamento púb
 
 **Interfaces existentes:** `proofStorePut(ref,image,key=vaultKey)`, `proofStoreRead(ref,key=vaultKey)`, `portableVault()`, `restorePortableState(state,key,salt,beforeCommit=()=>{})`, `downloadJSON()`, `#importFile`, `form[data-cloud-restore]` e `window.rfSecurityStatus()`.
 
-- [ ] Criar imagem sintética pequena e lançamento fictício com `proofs`/`imageRef` no primeiro contexto. Validar leitura cifrada no IndexedDB e backup que não contenha o texto/imagem em claro.
-- [ ] Ampliar a restauração de nuvem já simulada em `tests/cloud-flow.mjs`: depois de cancelar, errar senha e restaurar corretamente em outro contexto, confirmar que `proofStoreRead` devolve os bytes originais, que o contexto original continua intacto e que não houve upload do destinatário.
-- [ ] Ampliar `tests/browser-smoke.mjs`: baixar o JSON pela interface, importar em novo contexto e comparar lançamento e imagem. Executar também senha errada, cancelamento e falha de leitura de imagem na exportação, exigindo preservação dos dados e ausência de download falso.
-- [ ] Executar `node tests/browser-smoke.mjs` e `node tests/cloud-flow.mjs`. Se houver falha de produto, registrar causa, corrigir minimamente e repetir até passar. Se já passar, não alterar o produto.
-- [ ] Commit: `test: validar recuperação de comprovantes entre navegadores`.
+- [x] Criar imagem sintética pequena e lançamento fictício com `proofs`/`imageRef` no primeiro contexto. Validar leitura cifrada no IndexedDB e backup que não contenha o texto/imagem em claro.
+- [x] Ampliar a restauração de nuvem já simulada em `tests/cloud-flow.mjs`: depois de cancelar, errar senha e restaurar corretamente em outro contexto, confirmar que `proofStoreRead` devolve os bytes originais, que o contexto original continua intacto e que não houve upload do destinatário.
+- [x] Ampliar `tests/browser-smoke.mjs`: baixar o JSON pela interface, importar em novo contexto e comparar lançamento e imagem. Executar também senha errada, cancelamento e falha de leitura de imagem na exportação, exigindo preservação dos dados e ausência de download falso.
+- [x] Executar `node tests/browser-smoke.mjs` e `node tests/cloud-flow.mjs`. Se houver falha de produto, registrar causa, corrigir minimamente e repetir até passar. Se já passar, não alterar o produto.
+- [x] Commit: `test: validar recuperação de comprovantes entre navegadores`.
 
 ## Tarefa 2 — offline e atualização do PWA
 
@@ -51,22 +51,22 @@ Esta entrega conclui uma etapa técnica da beta, não certifica lançamento púb
 
 **Interfaces existentes:** `./sw.js`, `CACHE`, `ASSETS`, mensagem `{type:'SKIP_WAITING'}` e registro em `core.js` também para localhost. `updater.js` observa atualização em HTTPS. Não confundir teste do protocolo de atualização com teste da barra visual HTTPS.
 
-- [ ] Usar o padrão de servidor Python dos testes existentes, porta 8768 e `process.env.PYTHON || 'python3'`; finalizar servidor/contextos em `finally` e usar temporário do sistema para servir versões de teste, sem editar arquivos durante testes.
-- [ ] Servir sob `/rota-financeira/` para exercitar caminhos relativos do GitHub Pages. Esperar service worker ativo e controlador, criar cofre/prova fictícios, desligar rede, recarregar, desbloquear e comparar registros/imagem. Fechar a página, abrir outra no mesmo contexto offline e repetir a leitura.
-- [ ] Simular segunda versão alterando somente o nome do cache no diretório temporário. Registrar/atualizar SW, aguardar `waiting`, enviar `SKIP_WAITING`, aguardar novo controlador e conferir estado após recarga offline.
-- [ ] Confirmar remoção do cache anterior `rf-pages-*`, preservação de cache fictício de outro produto e ausência de alterações em cofre/prova/metadados pela ativação do SW.
-- [ ] Executar `node tests/pwa-offline.mjs`. Corrigir apenas falha comprovada. Acrescentar exatamente esse comando após as suites existentes na CI.
-- [ ] Commit: `test: cobrir ciclo offline e atualização do PWA`.
+- [x] Usar o padrão de servidor Python dos testes existentes, porta 8768 e `process.env.PYTHON || 'python3'`; finalizar servidor/contextos em `finally` e usar temporário do sistema para servir versões de teste, sem editar arquivos durante testes.
+- [x] Servir sob `/rota-financeira/` para exercitar caminhos relativos do GitHub Pages. Esperar service worker ativo e controlador, criar cofre/prova fictícios, desligar rede, recarregar, desbloquear e comparar registros/imagem. Fechar a página, abrir outra no mesmo contexto offline e repetir a leitura.
+- [x] Simular segunda versão alterando somente o nome do cache no diretório temporário. Registrar/atualizar SW, aguardar `waiting`, enviar `SKIP_WAITING`, aguardar novo controlador e conferir estado após recarga offline.
+- [x] Confirmar remoção do cache anterior `rf-pages-*`, preservação de cache fictício de outro produto e ausência de alterações em cofre/prova/metadados pela ativação do SW.
+- [x] Executar `node tests/pwa-offline.mjs`. Corrigir apenas falha comprovada. Acrescentar exatamente esse comando após as suites existentes na CI.
+- [x] Commit: `test: cobrir ciclo offline e atualização do PWA`.
 
 ## Tarefa 3 — verificação e entrega
 
 **Arquivos:** criar `docs/BETA-PRIVADA.md`, atualizar este plano com evidências. Atualizar `AGENTS.md` no PR correspondente se a integração exigir novos comandos; não sobrescrever instruções existentes.
 
-- [ ] Rodar `node --check` nos oito scripts listados no workflow, `node tests/security-audit.mjs`, `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` e as quatro suites de navegador em sequência.
-- [ ] Conferir capturas de responsividade e usar somente dados sintéticos. Registrar limites de emulação e versão local do Node; a confirmação de Node 22/PostgreSQL 16 deve vir dos checks do mesmo commit na CI.
-- [ ] Revisar o diff completo; uma revisão independente verifica preservação, isolamento e se testes podem passar sem exercitar o recurso.
-- [ ] Documentar aceite técnico e roteiro físico: backup pelo responsável antes de atualizar; instalação Android; reabertura sem rede; restauração em outro aparelho com base fictícia; imagem visível; atualização; celular/tablet/desktop e TV física se desejado. Não marcar esses testes manuais como executados sem evidência.
-- [ ] Criar commit e PR de escopo próprio; confirmar checks `audit` e `rls`. Não mesclar nem publicar automaticamente.
+- [x] Rodar `node --check` nos oito scripts listados no workflow, `node tests/security-audit.mjs`, `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` e as quatro suites de navegador em sequência.
+- [x] Conferir capturas de responsividade e usar somente dados sintéticos. Registrar limites de emulação e versão local do Node; a confirmação de Node 22/PostgreSQL 16 deve vir dos checks do mesmo commit na CI.
+- [x] Revisar o diff completo; uma revisão independente verifica preservação, isolamento e se testes podem passar sem exercitar o recurso.
+- [x] Documentar aceite técnico e roteiro físico: backup pelo responsável antes de atualizar; instalação Android; reabertura sem rede; restauração em outro aparelho com base fictícia; imagem visível; atualização; celular/tablet/desktop e TV física se desejado. Não marcar esses testes manuais como executados sem evidência.
+- [x] Criar commit e PR de escopo próprio; confirmar checks `audit` e `rls`. Não mesclar nem publicar automaticamente.
 
 ## Critério de entrega
 
@@ -84,3 +84,4 @@ PR com testes de comprovantes e offline/atualização passando na CI; dados do u
 - Integração: o guia proposto no PR #10 permanece independente; o novo comando também está documentado em `docs/BETA-PRIVADA.md`. Atualizar o guia de agentes ao integrar as branches, sem descrever como existente na `main` uma suite ainda em revisão.
 - Não executados: testes físicos, clique na barra HTTPS, produção Supabase e instalação real no Android. Permanecem explicitamente pendentes no roteiro de homologação.
 - Revisão independente: nenhuma regressão de produto identificada; apontou contador de uploads observando somente a origem. Corrigido para contar requisições do destinatário; controle negativo deliberado falhou com `1 !== 0` e foi removido antes da execução final. A preservação de imagem preexistente no destino também ganhou asserções após senha errada e cancelamento. Esses dois ajustes fecham lacunas de teste, sem alterar o app.
+- Entrega: PR #11 com checks `audit` e `rls` aprovados; os PRs #10/#11 foram integrados por autorização do responsável. O guia de agentes recebeu o novo comando e a documentação passou a distinguir integração/publicação de homologação física. Acompanhar a publicação e registrar o resultado no resumo final, sem marcar testes físicos como concluídos.

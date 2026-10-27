@@ -7,7 +7,7 @@ Aplicativo experimental de controle financeiro para motoristas e entregadores: r
 Repositório: https://github.com/phtrafegopg-ux/rota-financeira
 Publicação: https://phtrafegopg-ux.github.io/rota-financeira/
 
-Este guia foi conferido em 27/10/2026 contra a `main`, commit `92d345faffa2b044f983d2a7eacf91fa1185db10`. Antes de trabalhar, confira a estrutura e os workflows atuais. Código e configuração atuais prevalecem sobre descrições históricas. Este arquivo orienta agentes na raiz e nas subpastas, respeitando instruções específicas de cada diretório.
+Este guia foi conferido em 27/10/2026 contra a `main`, commit `869e5860730ce47952745376da2a663bccb7ea0f`, após integrar os PRs #10 e #11. Antes de trabalhar, confira a estrutura e os workflows atuais. Código e configuração atuais prevalecem sobre descrições históricas. Este arquivo orienta agentes na raiz e nas subpastas, respeitando instruções específicas de cada diretório.
 
 ## Arquitetura real e onde encontrar o código
 
@@ -26,6 +26,8 @@ PWA estática, sem framework, bundler ou servidor próprio neste repositório. H
 | `manifest.webmanifest`, `sw.js`, `updater.js` | Instalação PWA, cache de recursos e fluxo de atualização. |
 | `supabase/01_seguro.sql` | Esquema, privilégios, políticas RLS e RPC CAS. Não executar automaticamente em produção. |
 | `tests/*.mjs`, `tests/sql/` | Testes locais, navegador com dados fictícios e banco descartável. |
+| `tests/pwa-offline.mjs` | Reabertura offline e ativação de atualização, preservando cofre, comprovantes, metadados e caches alheios. |
+| `docs/BETA-PRIVADA.md` | Evidências técnicas e roteiro de homologação física ainda pendente. |
 | `.github/workflows/` | Verificações, PostgreSQL e publicação Pages. |
 | `RELEASE-4.0.md`, `SEGURANCA-E-ATIVACAO.md`, `docs/` | Entregas, ativação e registros de auditoria/pendências. |
 
@@ -87,9 +89,10 @@ npx playwright install chromium
 node tests/browser-smoke.mjs
 node tests/cloud-flow.mjs
 node tests/responsive-layout.mjs
+node tests/pwa-offline.mjs
 ```
 
-Essa instalação é para ambiente de teste isolado; não adiciona uma etapa de build. Não apagar dependências locais nem publicar arquivos gerados. Os scripts iniciam seu próprio servidor Python nas portas 8765, 8766 e 8767, respectivamente; execute-os em sequência e confirme que as portas estão livres. Usam `process.env.PYTHON` ou `python3`. No PowerShell, se o executável disponível for `python`, configure `$env:PYTHON = 'python'` antes de rodá-los. Não usar o perfil pessoal do navegador nem conectar contas reais. `tests/cloud-flow.mjs` intercepta a API de nuvem com respostas simuladas.
+Essa instalação é para ambiente de teste isolado; não adiciona uma etapa de build. Não apagar dependências locais nem publicar arquivos gerados. Os quatro scripts iniciam seu próprio servidor Python nas portas 8765, 8766, 8767 e 8768, respectivamente; execute-os em sequência e confirme que as portas estão livres. Usam `process.env.PYTHON` ou `python3`. No PowerShell, se o executável disponível for `python`, configure `$env:PYTHON = 'python'` antes de rodá-los. Não usar o perfil pessoal do navegador nem conectar contas reais. `tests/cloud-flow.mjs` intercepta a API de nuvem com respostas simuladas. `tests/pwa-offline.mjs` usa cópia temporária sob `/rota-financeira/`; valida o protocolo do service worker, não o clique na barra HTTPS nem instalação física.
 
 Para visualizar manualmente em ambiente isolado, o mesmo servidor padrão usado pelos testes pode ser iniciado com `python3 -m http.server 8765 --bind 127.0.0.1` e aberto em `http://127.0.0.1:8765/index.html`. Use o executável Python disponível e uma porta livre. Web Crypto requer HTTPS ou localhost; abrir por `file://` não substitui esse teste.
 
