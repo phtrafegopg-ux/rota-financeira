@@ -28,6 +28,7 @@ PWA estática, sem framework, bundler ou servidor próprio neste repositório. H
 | `tests/*.mjs`, `tests/sql/` | Testes locais, navegador com dados fictícios e banco descartável. |
 | `tests/pwa-offline.mjs` | Reabertura offline e ativação de atualização, preservando cofre, comprovantes, metadados e caches alheios. |
 | `docs/BETA-PRIVADA.md` | Evidências técnicas e roteiro de homologação física ainda pendente. |
+| `docs/VALIDACAO-RECUPERACAO-2026-10-27.md` | Rodada ampliada de recuperação e troca de senha, com resultados e limites. |
 | `.github/workflows/` | Verificações, PostgreSQL e publicação Pages. |
 | `RELEASE-4.0.md`, `SEGURANCA-E-ATIVACAO.md`, `docs/` | Entregas, ativação e registros de auditoria/pendências. |
 
@@ -93,6 +94,8 @@ node tests/pwa-offline.mjs
 ```
 
 Essa instalação é para ambiente de teste isolado; não adiciona uma etapa de build. Não apagar dependências locais nem publicar arquivos gerados. Os quatro scripts iniciam seu próprio servidor Python nas portas 8765, 8766, 8767 e 8768, respectivamente; execute-os em sequência e confirme que as portas estão livres. Usam `process.env.PYTHON` ou `python3`. No PowerShell, se o executável disponível for `python`, configure `$env:PYTHON = 'python'` antes de rodá-los. Não usar o perfil pessoal do navegador nem conectar contas reais. `tests/cloud-flow.mjs` intercepta a API de nuvem com respostas simuladas. `tests/pwa-offline.mjs` usa cópia temporária sob `/rota-financeira/`; valida o protocolo do service worker, não o clique na barra HTTPS nem instalação física.
+
+Se a porta 8765 estiver ocupada, `tests/browser-smoke.mjs` aceita `RF_TEST_PORT` com outra porta livre. Não interromper servidores de outros projetos para executar a validação.
 
 Para visualizar manualmente em ambiente isolado, o mesmo servidor padrão usado pelos testes pode ser iniciado com `python3 -m http.server 8765 --bind 127.0.0.1` e aberto em `http://127.0.0.1:8765/index.html`. Use o executável Python disponível e uma porta livre. Web Crypto requer HTTPS ou localhost; abrir por `file://` não substitui esse teste.
 
