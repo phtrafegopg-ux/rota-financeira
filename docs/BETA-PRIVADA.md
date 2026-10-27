@@ -19,7 +19,7 @@ A importação de arquivo tinha uma corrida reproduzida: bloquear o cofre durant
 
 A suite PWA usa servidor local, cópia temporária dos arquivos e dois nomes de cache para simular atualização. Não modifica o checkout durante sua execução. Ela testa o protocolo real de ativação do service worker; não testa o clique na barra HTTPS de `updater.js`, a instalação pelo menu do Android ou funcionamento em TV física.
 
-Os testes de navegador usam Playwright 1.56.1 e Chromium. Requisitos e comandos de preparação estão em `.github/workflows/security-checks.yml` e no guia `AGENTS.md` proposto pelo PR #10. O novo comando `node tests/pwa-offline.mjs` integra a mesma verificação antes de deploy. Localmente a validação usa Node 24; a CI confirma Node 22. Resultados finais e URL do PR devem acompanhar a entrega; listar um comando aqui não declara que a execução atual passou.
+Os testes de navegador usam Playwright 1.56.1 e Chromium. Requisitos e comandos de preparação estão em `.github/workflows/security-checks.yml` e no guia `AGENTS.md`. O comando `node tests/pwa-offline.mjs` integra a mesma verificação antes de deploy. A bateria local passou em Node 24 e os checks `audit`/`rls` do PR #11 passaram em Node 22/PostgreSQL 16. Os PRs #10 e #11 foram integrados na `main` em 27/10/2026 após autorização do responsável. O commit integrado é `869e5860730ce47952745376da2a663bccb7ea0f`; a publicação também executa suas próprias verificações antes do deploy. Evidência em https://github.com/phtrafegopg-ux/rota-financeira/pull/11.
 
 ## Homologação física — pendente
 
@@ -39,4 +39,4 @@ Registrar cada resultado como aprovado/reprovado/pendente, com ambiente e evidê
 
 PRO, cobrança, premiações, recuperação de chave sem senha original, auditoria externa, conformidade LGPD e operação de backup/PITR. Também permanecem pendentes as configurações de Auth e proteção administrativa registradas na auditoria; não foram alteradas ou declaradas resolvidas.
 
-Somente após aprovação dos checks do commit, revisão do PR, backup e homologação aplicável deve o responsável decidir merge e publicação. Abrir PR não altera o app instalado.
+O responsável autorizou integrar e publicar esta etapa técnica. Isso não conclui a homologação física, não autoriza alterar dados/serviços de produção e não substitui o backup antes de atualizar uma instalação pessoal. Os resultados de publicação e da verificação do site acompanham o resumo da entrega; qualquer teste físico não executado continua pendente.
