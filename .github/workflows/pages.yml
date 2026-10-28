@@ -32,6 +32,7 @@ jobs:
         run: |
           mkdir -p public-site
           cp -- *.html *.js *.css *.svg manifest.webmanifest public-site/
+          cp -- tutorial-rota-financeira.mp4 tutorial-poster.jpg public-site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

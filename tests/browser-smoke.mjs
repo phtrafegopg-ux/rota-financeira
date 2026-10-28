@@ -17,6 +17,36 @@ try{
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(origin+'/index.html',{waitUntil:'networkidle',timeout:30000});
  console.log("DIAG",JSON.stringify({url:page.url(),title:await page.title(),body:(await page.locator('body').innerText()).slice(0,600),errors,hasCrypto:await page.evaluate(()=>!!crypto?.subtle),scripts:await page.locator('script').count()}));
+ const tutorialRequests=[];
+ page.on('request',request=>{if(request.url().endsWith('/tutorial-rota-financeira.mp4'))tutorialRequests.push(request.url())});
+ async function checkTutorial(){
+   const before=await page.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
+   await page.getByRole('button',{name:'Assistir tutorial',exact:true}).click();
+   const video=page.locator('video');await video.waitFor();
+   assert.equal(await video.getAttribute('preload'),'none');
+   assert.equal(await video.getAttribute('autoplay'),null);
+   assert.notEqual(await video.getAttribute('controls'),null);
+   assert.notEqual(await video.getAttribute('playsinline'),null);
+   assert.equal(await video.locator('source').getAttribute('src'),'./tutorial-rota-financeira.mp4');
+   await page.waitForTimeout(180);
+   assert.equal(tutorialRequests.length,0,'MP4 só deve ser solicitado ao reproduzir');
+   for(const width of [280,390,820,1920]){
+     await page.setViewportSize({width,height:850});
+     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth+2),false,'tutorial sem overflow');
+     const box=await video.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=width+2);
+     if(width===390){await fs.mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/tutorial-'+(before?'settings':'acesso')+'.png',fullPage:true})}
+   }
+   await page.locator('#modalRoot [data-action="close"]').click();
+   assert.equal(await video.count(),0,'fechar remove o player e interrompe a reprodução');
+   assert.equal(await page.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),before,'assistir não altera o cofre');
+   await page.setViewportSize({width:390,height:850});
+ }
+ await checkTutorial();
+ assert.equal(await page.locator('form[data-security="setup"]').count(),1,'tutorial não exige criar cofre');
+ const tutorialResponse=await page.request.get(origin+'/tutorial-rota-financeira.mp4');
+ assert.equal(tutorialResponse.status(),200,'vídeo publicado pelo servidor estático');
+ assert.ok(tutorialResponse.headers()['content-type'].includes('video/mp4'));
+ const movie=await tutorialResponse.body();assert.equal(movie.subarray(4,8).toString(),'ftyp','arquivo MP4 real');
  await page.locator('[data-security="setup"] input[name="password"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="setup"] input[name="confirm"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="setup"] button[type="submit"]').click();
@@ -38,6 +68,7 @@ try{
  assert.ok(await page.evaluate(()=>!!localStorage.getItem('rf_local_unsynced_v40')),'Gravação local marca alteração pendente');
  await page.locator('button[data-nav="settings"]').first().click();
  await page.getByText('Central de proteção').waitFor({timeout:10000});
+ await checkTutorial();
  const checkbox=page.locator('#rfAutosync');
  await checkbox.click();
  assert.notEqual(await page.evaluate(()=>localStorage.getItem('rf_autobackup_optin_v31')),'1','Não pode ligar backup sem conta autenticada.');
