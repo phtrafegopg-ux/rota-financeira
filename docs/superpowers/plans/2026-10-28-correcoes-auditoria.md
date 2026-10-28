@@ -18,7 +18,7 @@ Objetivo: corrigir os quatro casos reproduzidos na auditoria do commit f90f830, 
 - [x] Validar tipos, datas, valores e coleções usados pelos renderizadores antes de substituir dados, preservando campos opcionais históricos.
 - [x] Marcar pendência após gravação confirmada, sem enviar automaticamente o cofre recém-restaurado da nuvem.
 - [x] Executar testes Node, navegador, responsividade/PWA/abas e verificar diff.
-- [ ] Revisar e abrir PR com evidências; aguardar autorização de merge/publicação.
+- [x] Revisar e abrir PR com evidências; PR #15 integrado e publicado após autorização do responsável.
 
 Riscos a verificar: senha errada e quota preservam estado; backup antigo válido continua aceito; bloqueio/login novo invalidam respostas; restauração remota mantém opt-in desligado; nenhuma imagem referenciada é excluída.
 
@@ -31,3 +31,7 @@ Uma fixture antiga injetava entrada sem id, diferente do formulário real; receb
 ## Revisão independente
 
 O revisor reproduziu a ausência de settings.initialDate aceita pela primeira versão da validação. O campo é necessário ao renderizador e passou a ser obrigatório; regressões cobrem ausência em arquivo cifrado e legado e preservação do destino. Fixtures Node esparsas receberam data sintética válida, sem enfraquecer os asserts. Não foram confirmados outros achados importantes no diff revisado. A correção desse achado foi verificada pelo executor; não há afirmação de pentest externo.
+
+## Publicação confirmada
+
+[PR #15](https://github.com/phtrafegopg-ux/rota-financeira/pull/15), commit `59faa647b6c08e0efd285c2c2d60091e1aaa5523`: checks Node 22/PostgreSQL 16 e deploy aprovados. Verificação após publicação confirmou arquivos, abertura offline, proteção entre abas e os dez cenários de regressão com dados fictícios e Supabase bloqueado. A revisão externa e demais critérios de lançamento continuam pendentes, conforme [entrega consolidada](../../ENTREGA-BETA-PRIVADA.md).

@@ -7,7 +7,7 @@ Aplicativo experimental de controle financeiro para motoristas e entregadores: r
 Repositório: https://github.com/phtrafegopg-ux/rota-financeira
 Publicação: https://phtrafegopg-ux.github.io/rota-financeira/
 
-Este guia foi conferido em 27/10/2026 contra a `main`, commit `869e5860730ce47952745376da2a663bccb7ea0f`, após integrar os PRs #10 e #11. Antes de trabalhar, confira a estrutura e os workflows atuais. Código e configuração atuais prevalecem sobre descrições históricas. Este arquivo orienta agentes na raiz e nas subpastas, respeitando instruções específicas de cada diretório.
+Revisão documental em 28/10/2026 sobre a base funcional `59faa647b6c08e0efd285c2c2d60091e1aaa5523`, após integrar o PR #15. A entrega técnica e seus limites estão em `docs/ENTREGA-BETA-PRIVADA.md`. Antes de trabalhar, confira a estrutura e os workflows atuais. Código e configuração atuais prevalecem sobre descrições históricas. Este arquivo orienta agentes na raiz e nas subpastas, respeitando instruções específicas de cada diretório.
 
 ## Arquitetura real e onde encontrar o código
 
@@ -30,6 +30,7 @@ PWA estática, sem framework, bundler ou servidor próprio neste repositório. H
 | `tests/multi-tab.mjs` | Proteção contra edição concorrente do mesmo cofre em abas do mesmo perfil. |
 | `tests/audit-regressions.mjs` | Bloqueio durante leitura/envio, validação de importação, migração legada e pendência após troca de senha/importação. |
 | `docs/BETA-PRIVADA.md` | Evidências técnicas e roteiro de homologação física ainda pendente. |
+| `docs/ENTREGA-BETA-PRIVADA.md` | Consolidação da entrega, evidências da versão funcional, uso da cópia e critérios externos pendentes. |
 | `docs/VALIDACAO-RECUPERACAO-2026-10-27.md` | Rodada ampliada de recuperação e troca de senha, com resultados e limites. |
 | `.github/workflows/` | Verificações, PostgreSQL e publicação Pages. |
 | `RELEASE-4.0.md`, `SEGURANCA-E-ATIVACAO.md`, `docs/` | Entregas, ativação e registros de auditoria/pendências. |

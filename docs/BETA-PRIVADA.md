@@ -1,5 +1,7 @@
 # Beta privada — validação e próximos critérios
 
+Estado consolidado da entrega técnica após o PR #15: [ENTREGA-BETA-PRIVADA.md](ENTREGA-BETA-PRIVADA.md). O roteiro físico abaixo continua parcial.
+
 ## Escopo desta entrega
 
 Esta etapa valida recuperação de comprovantes e o ciclo offline/atualização com dados fictícios. Não representa liberação comercial, auditoria independente ou homologação de todos os aparelhos.
@@ -14,7 +16,8 @@ A importação de arquivo tinha uma corrida reproduzida: bloquear o cofre durant
 | Backup de nuvem simulado e recuperação em outro contexto | `node tests/cloud-flow.mjs` | Imagem recuperada sem depender do IndexedDB original e sem upload pelo destinatário; conflitos e vínculo de conta preservados. |
 | Reabertura offline e atualização sob `/rota-financeira/` | `node tests/pwa-offline.mjs` | Registros, imagem e metadados sobrevivem à recarga, reabertura da página e nova versão; cache alheio preservado. |
 | Abas do mesmo perfil | `node tests/multi-tab.mjs` | Uma aba desbloqueada por vez; fila salva antes da transferência; falhas e fechamento liberam a reserva sem sobrescrever cofres. Requer Web Locks. |
-| Sessão, criptografia, restauração e troca de senha | `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` | Dezesseis casos, incluindo senha errada, conteúdo adulterado, quota e cancelamento de troca de senha obsoleta. |
+| Regressões da auditoria | `node tests/audit-regressions.mjs` | Dez cenários: apresentação após bloqueio, importações inválidas legadas/cifradas, migração inválida e pendência de backup. |
+| Sessão, criptografia, restauração e troca de senha | `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` | Dezessete casos, incluindo validação de conteúdo, senha errada, conteúdo adulterado, quota e cancelamento de troca de senha obsoleta. |
 | Layout | `node tests/responsive-layout.mjs` | Sete telas de 280 a 2560 px, abas e modais sem overflow nem mudança dos dados. |
 | Isolamento do banco | `.github/workflows/postgres-security.yml` | PostgreSQL 16 descartável com RLS, CAS e isolamento A/B aprovados. Nunca executar o bootstrap no Supabase real. |
 

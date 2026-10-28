@@ -21,7 +21,7 @@ As outras abas podem continuar abertas na tela de acesso; para usá-las, bloquea
 - [x] Validar segunda aba bloqueada, liberação por bloqueio/fechamento, senha errada, fila pendente, criação concorrente e navegador sem API.
 - [x] Rodar suites existentes, integrar `node tests/multi-tab.mjs` na CI e revisar o diff de forma independente.
 - [x] Registrar a confirmação relatada pelo usuário: restauração no segundo aparelho e comprovante aberto; modelo e navegador não informados.
-- [ ] Entregar PR com evidências, sem assumir autorização de publicação para alterações novas.
+- [x] Entregar PR com evidências; PR #14 integrado e publicado após autorização do responsável.
 
 ## Revisão e correções relacionadas
 
@@ -37,3 +37,5 @@ O responsável confirmou em conversa que o cofre fictício foi restaurado no seg
 Verificação final local: sintaxe dos oito scripts, auditoria estática, 16 testes Node e cinco suites Chromium/Playwright 1.56.1 aprovados. O revisor reproduziu os dois achados; o executor aplicou as correções e confirmou regressões e suite completa. Node local 24.22.0; os checks do commit da PR confirmam Node 22 e PostgreSQL 16, sem antecipar seu resultado.
 
 Referência técnica: [Web Locks — W3C](https://www.w3.org/TR/web-locks/). Os locks exclusivos de um mesmo nome são coordenados entre contextos da mesma origem e liberados ao concluir a callback.
+
+Encerramento: [PR #14](https://github.com/phtrafegopg-ux/rota-financeira/pull/14), commit integrado `f90f8307837ad2265f527757bd254d37eafaef5c`; checks/deploy aprovados e verificação publicada em perfis fictícios. Estado atual em [ENTREGA-BETA-PRIVADA.md](ENTREGA-BETA-PRIVADA.md).
