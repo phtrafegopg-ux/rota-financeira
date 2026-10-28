@@ -11,7 +11,27 @@ async function deriveKey(pass,salt){const material=await crypto.subtle.importKey
 async function packState(state,key,salt){const iv=crypto.getRandomValues(new Uint8Array(12));const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(state)));return {schema:2,method:'PBKDF2-SHA256-AES256-GCM',iterations:310000,salt:base64(salt),iv:base64(iv),ciphertext:base64(encrypted),updatedAt:new Date().toISOString()}}
 async function decryptState(box,key){const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:unbase64(box.iv)},key,unbase64(box.ciphertext));const state=JSON.parse(new TextDecoder().decode(bytes));if(!cleanState(state))throw Error('Formato inválido');return state}
 function vaultPage(){const root=document.getElementById('app');const exists=!!localStorage.getItem(VAULT);root.innerHTML=`<header class="head"><div class="brand"><div class="mark">↗</div><div><strong>Rota Financeira</strong><div class="eyebrow">Seus dados, protegidos</div></div></div></header><section class="panel hero"><div class="eyebrow" style="color:#bae9d9">${exists?'Acesso protegido':'Primeiro acesso'}</div><h1>${exists?'Desbloquear meu controle':'Crie uma senha de proteção'}</h1><p class="hint">${exists?'Seus lançamentos e suas metas estão criptografados neste aparelho.':'Seus dados financeiros serão criptografados no dispositivo. Sua senha não é enviada para servidores. Após entrar, importe o arquivo de dados iniciais fornecido separadamente.'}</p><form data-security="${exists?'unlock':'setup'}"><div class="field"><label>Senha do cofre (mínimo 8 caracteres)</label><input name="password" type="password" autocomplete="${exists?'current-password':'new-password'}" minlength="8" required></div>${exists?'':'<div class="field"><label>Confirmar senha</label><input name="confirm" type="password" autocomplete="new-password" minlength="8" required></div>'}<button class="btn block" type="submit">${exists?'Desbloquear':'Proteger e entrar'}</button></form></section><div class="notice">Guarde sua senha. Sem ela não é possível recuperar um backup criptografado. A sincronização na nuvem requer configuração separada.</div><p class="hint">Para restaurar em outro celular: configure uma senha temporária, acesse Ajustes → Nuvem, faça login e restaure o cofre salvo usando a senha original.</p>`;document.getElementById('modalRoot').innerHTML='';}
-async function changeVaultPass(f){const btn=f.querySelector('button[type=submit]');btn.disabled=true;try{const old=f.elements.old.value,pass=f.elements.password.value;if(pass.length<8||pass!==f.elements.confirm.value)throw Error('Confirme a nova senha (mínimo 8 caracteres).');await waitSave();const local=JSON.parse(localStorage.getItem(VAULT));const key=await deriveKey(old,unbase64(local.salt));await decryptState(local,key);const salt=saltNew(),nextKey=await deriveKey(pass,salt);const withImages=await expandedImages(data,key);await restorePortableState(withImages,nextKey,salt);f.reset();toast('Senha alterada. Exporte um novo backup e atualize a nuvem, se usar.');}catch(e){alert('Senha não alterada: confira a senha atual e os novos campos.')}finally{btn.disabled=false}}
+async function changeVaultPass(f){
+ const btn=f.querySelector('button[type=submit]');btn.disabled=true;
+ const originalKey=vaultKey,originalState=data,originalQueue=saveQueue;
+ const assertPasswordContext=()=>{
+  if(!vaultKey||vaultKey!==originalKey||data!==originalState||saveQueue!==originalQueue)
+   throw Error('O cofre mudou durante a troca de senha.');
+ };
+ try{
+  const old=f.elements.old.value,pass=f.elements.password.value;
+  if(pass.length<8||pass!==f.elements.confirm.value)throw Error('Confirme a nova senha (mínimo 8 caracteres).');
+  await waitSave();assertPasswordContext();
+  const local=JSON.parse(localStorage.getItem(VAULT));
+  const key=await deriveKey(old,unbase64(local.salt));
+  await decryptState(local,key);assertPasswordContext();
+  const salt=saltNew(),nextKey=await deriveKey(pass,salt);
+  const withImages=await expandedImages(data,key);assertPasswordContext();
+  await restorePortableState(withImages,nextKey,salt,assertPasswordContext);
+  f.reset();toast('Senha alterada. Exporte um novo backup e atualize a nuvem, se usar.');
+ }catch(e){alert('Senha não alterada. Confira a senha atual e os novos campos; se o cofre mudou, tente novamente com ele desbloqueado.')}
+ finally{btn.disabled=false}
+}
 async function initSecurity(){if(!crypto?.subtle){document.getElementById('app').innerHTML='<div class="notice">Este ambiente não oferece criptografia segura. Abra o aplicativo em HTTPS (ou localhost), usando um navegador atualizado.</div>';return;}vaultPage()}
 async function unlock(pass){const box=JSON.parse(localStorage.getItem(VAULT));const key=await deriveKey(pass,unbase64(box.salt));const state=await decryptState(box,key);data=state;if(!Array.isArray(data.leaguePlans))data.leaguePlans=[];vaultKey=key;vaultSalt=unbase64(box.salt);currentVault=box;render();syncNativeAlerts();checkReminders()}
 async function setup(pass){let legacy;try{legacy=JSON.parse(localStorage.getItem(STORE))}catch(e){}data=cleanState(legacy)?legacy:initial();if(!Array.isArray(data.leaguePlans))data.leaguePlans=[];vaultSalt=saltNew();vaultKey=await deriveKey(pass,vaultSalt);const box=await packState(data,vaultKey,vaultSalt);localStorage.setItem(VAULT,JSON.stringify(box));currentVault=box;localStorage.removeItem(STORE);render();syncNativeAlerts();checkReminders()}

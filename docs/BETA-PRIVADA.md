@@ -13,7 +13,7 @@ A importação de arquivo tinha uma corrida reproduzida: bloquear o cofre durant
 | Backup JSON pela interface, restauração em outro contexto e comprovante | `node tests/browser-smoke.mjs` | Arquivo cifrado; imagem recuperada; origem preservada; cancelamento/senha errada/bloqueio não substituem destino. Imagem ausente impede download incompleto. |
 | Backup de nuvem simulado e recuperação em outro contexto | `node tests/cloud-flow.mjs` | Imagem recuperada sem depender do IndexedDB original e sem upload pelo destinatário; conflitos e vínculo de conta preservados. |
 | Reabertura offline e atualização sob `/rota-financeira/` | `node tests/pwa-offline.mjs` | Registros, imagem e metadados sobrevivem à recarga, reabertura da página e nova versão; cache alheio preservado. |
-| Sessão, criptografia e commit de restauração | `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` | Doze casos aprovados, incluindo senha errada, conteúdo adulterado e respostas atrasadas. |
+| Sessão, criptografia, restauração e troca de senha | `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` | Dezesseis casos, incluindo senha errada, conteúdo adulterado, quota e cancelamento de troca de senha obsoleta. |
 | Layout | `node tests/responsive-layout.mjs` | Sete telas de 280 a 2560 px, abas e modais sem overflow nem mudança dos dados. |
 | Isolamento do banco | `.github/workflows/postgres-security.yml` | PostgreSQL 16 descartável com RLS, CAS e isolamento A/B aprovados. Nunca executar o bootstrap no Supabase real. |
 
@@ -21,13 +21,16 @@ A suite PWA usa servidor local, cópia temporária dos arquivos e dois nomes de 
 
 Os testes de navegador usam Playwright 1.56.1 e Chromium. Requisitos e comandos de preparação estão em `.github/workflows/security-checks.yml` e no guia `AGENTS.md`. O comando `node tests/pwa-offline.mjs` integra a mesma verificação antes de deploy. A bateria local passou em Node 24 e os checks `audit`/`rls` do PR #11 passaram em Node 22/PostgreSQL 16. Os PRs #10 e #11 foram integrados na `main` em 27/10/2026 após autorização do responsável. O commit integrado é `869e5860730ce47952745376da2a663bccb7ea0f`; a publicação também executa suas próprias verificações antes do deploy. Evidência em https://github.com/phtrafegopg-ux/rota-financeira/pull/11.
 
-## Homologação física — pendente
+## Homologação física — parcial
+
+Em conversa de 27/10/2026, o responsável informou que a atualização preservou os dados antigos e que conseguiu entrar e consultá-los em modo avião. Modelo do aparelho, sistema e navegador não foram informados; é evidência relatada, não observação direta do agente. Restauração em outro aparelho e abertura das imagens dos comprovantes ainda exigem confirmação específica. A rodada ampliada está em `docs/VALIDACAO-RECUPERACAO-2026-10-27.md`.
 
 Use base fictícia em perfil/dispositivo de teste. Para atualizar uma instalação com dados reais, o responsável deve primeiro exportar e guardar backup cifrado fora do repositório; o agente não deve receber nem abrir esse arquivo. Não restaurar dados fictícios por cima de uma instalação pessoal.
 
 - [ ] Android/Chrome: instalar a versão revisada pelo menu do navegador e registrar aparelho, versão do sistema/navegador e commit.
 - [ ] Criar lançamentos e comprovante sintéticos, fechar e reabrir o app, conferir imagem e saldo.
-- [ ] Ativar modo avião, abrir o app instalado, desbloquear, conferir e registrar um lançamento; fechar e reabrir novamente.
+- [x] Entrar e consultar dados em modo avião: confirmado pelo responsável em conversa, sem identificação técnica do aparelho.
+- [ ] Em perfil de teste, registrar um lançamento fictício sem rede; fechar e reabrir para conferir a gravação.
 - [ ] Exportar backup sintético e restaurar em outro perfil/aparelho, usando a senha original. Conferir lançamentos e comprovante; cancelar e errar senha antes, verificando preservação do destino.
 - [ ] Voltar à rede, disponibilizar nova versão de teste e usar a barra de atualização HTTPS. Conferir dados após atualizar e depois offline.
 - [ ] Conferir celular, tablet e desktop: teclado, foco, zoom, textos longos, abas, formulários e modais. TV física deve ser registrada separadamente se for plataforma de uso pretendida.

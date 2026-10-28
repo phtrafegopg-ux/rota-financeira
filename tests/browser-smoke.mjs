@@ -5,7 +5,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 const temporary=await fs.mkdtemp(path.join(os.tmpdir(),'rf-portable-test-'));
-const server=spawn(process.env.PYTHON || 'python3',['-m','http.server','8765','--bind','127.0.0.1'],{stdio:'ignore'});
+const port=process.env.RF_TEST_PORT||'8765',origin='http://127.0.0.1:'+port;
+const server=spawn(process.env.PYTHON || 'python3',['-m','http.server',port,'--bind','127.0.0.1'],{stdio:'ignore'});
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 await sleep(1300);
 let browser;
@@ -14,7 +15,7 @@ try{
  const page=await browser.newPage({viewport:{width:390,height:850},acceptDownloads:true});
  const errors=[];
  page.on('pageerror',e=>errors.push(e.message));
- await page.goto('http://127.0.0.1:8765/index.html',{waitUntil:'networkidle',timeout:30000});
+ await page.goto(origin+'/index.html',{waitUntil:'networkidle',timeout:30000});
  console.log("DIAG",JSON.stringify({url:page.url(),title:await page.title(),body:(await page.locator('body').innerText()).slice(0,600),errors,hasCrypto:await page.evaluate(()=>!!crypto?.subtle),scripts:await page.locator('script').count()}));
  await page.locator('[data-security="setup"] input[name="password"]').fill('Cofre-Teste-Seguro-2026!');
  await page.locator('[data-security="setup"] input[name="confirm"]').fill('Cofre-Teste-Seguro-2026!');
@@ -57,8 +58,34 @@ try{
    await proofStorePut(ref,image);
    data.entries[0].id='portable-test';
    data.entries[0].proofs=[{imageRef:ref,sha256:'synthetic-proof'}];
+   data.settings.name='PAINEL_SINTETICO_VALIDACAO';
+   data.bills=[{id:'bill-test',title:'Conta sintética',amount:50,category:'Outros',kind:'once',month:selectedMonth,payments:{}}];
+   data.debts=[{id:'debt-test',title:'Dívida sintética',installment:10,remaining:2,totalRemaining:20,note:'teste',deducted:false}];
+   data.goals.push({id:'goal-test',title:'Meta sintética',target:500,current:25,note:'teste'});
+   data.snapshots=[{month:selectedMonth,createdAt:dt(),uberNet:170,gross:220,income:0,expense:0,nUber:1,balance:170,planned:50,debtsTotal:20,goals:[]}];
+   data.notes=['ANOTACAO_SINTETICA'];
    await save(true);return image;
  });
+ const expectedState=await page.evaluate(()=>expandedImages(data));
+ for(const entry of expectedState.entries)for(const proof of entry.proofs||[])delete proof.imageRef;
+ const proofProtection=await page.evaluate(async()=>{
+   const ref=data.entries[0].proofs[0].imageRef,db=await openProofDB();
+   try{
+     const record=await new Promise((resolve,reject)=>{
+       const req=db.transaction('proofs','readonly').objectStore('proofs').get(ref);
+       req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+     });
+     const moved=ref+'-moved';
+     await new Promise((resolve,reject)=>{
+       const tx=db.transaction('proofs','readwrite');tx.objectStore('proofs').put(record,moved);
+       tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+     });
+     let rejected=false;try{await proofStoreRead(moved)}catch{rejected=true}
+     await proofStoreDelete(moved);
+     return {encrypted:record.ciphertext instanceof ArrayBuffer&&!('image' in record),referenceBound:rejected};
+   }finally{db.close()}
+ });
+ assert.deepEqual(proofProtection,{encrypted:true,referenceBound:true},'comprovante cifrado e vinculado à referência');
  const downloadEvent=page.waitForEvent('download');
  await page.locator('[data-action="export"]').click();
  const file=path.join(temporary,'portable.json');
@@ -72,7 +99,7 @@ try{
  let password='senha-errada',cancel=false;
  pc.on('dialog',dialog=>dialog.type()==='prompt'?
    dialog.accept(password):dialog.type()==='confirm'&&cancel?dialog.dismiss():dialog.accept());
- await pc.goto('http://127.0.0.1:8765/index.html',{waitUntil:'networkidle'});
+ await pc.goto(origin+'/index.html',{waitUntil:'networkidle'});
  await pc.locator('[data-security="setup"] input[name="password"]').fill('Cofre-Destino-Temporario!');
  await pc.locator('[data-security="setup"] input[name="confirm"]').fill('Cofre-Destino-Temporario!');
  await pc.locator('[data-security="setup"] button[type="submit"]').click();
@@ -88,21 +115,55 @@ try{
    await save(true);return {ref,image};
  });
  const initial=await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
- async function importBackup(){
-   await pc.locator('#importFile').setInputFiles(file);
+ async function importBackup(candidate=file){
+   await pc.locator('#importFile').setInputFiles(candidate);
    await pc.waitForFunction(()=>!document.getElementById('importFile')?.files.length);
  }
  await importBackup();
  assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,'senha errada preserva destino');
  assert.equal(await pc.evaluate(ref=>proofStoreRead(ref),destinationProof.ref),destinationProof.image,'senha errada preserva imagem do destino');
- password='Cofre-Teste-Seguro-2026!';cancel=true;
+ password='Cofre-Teste-Seguro-2026!';
+ const tampered=JSON.parse(payload),bytes=Buffer.from(tampered.ciphertext,'base64');
+ bytes[0]^=1;tampered.ciphertext=bytes.toString('base64');
+ for(const [name,content] of [['malformed.json','{'],['tampered.json',JSON.stringify(tampered)]]){
+   const candidate=path.join(temporary,name);await fs.writeFile(candidate,content);
+   await importBackup(candidate);
+   assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,name+' preserva cofre');
+   assert.equal(await pc.evaluate(ref=>proofStoreRead(ref),destinationProof.ref),destinationProof.image,name+' preserva comprovante');
+ }
+ cancel=true;
  await importBackup();
  assert.equal(await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),initial,'cancelar preserva destino');
  assert.equal(await pc.evaluate(ref=>proofStoreRead(ref),destinationProof.ref),destinationProof.image,'cancelar preserva imagem do destino');
  cancel=false;await importBackup();
  assert.equal(await pc.evaluate(()=>data.entries[0].id),'portable-test');
  assert.equal(await pc.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),image);
+ const actualState=await pc.evaluate(()=>expandedImages(data));
+ for(const entry of actualState.entries)for(const proof of entry.proofs||[])delete proof.imageRef;
+ assert.deepEqual(actualState,expectedState,'restaurar contas, dívidas, metas, histórico, notas e comprovante');
  assert.equal(await page.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),image,'origem preservada');
+ // Troca legítima de senha mantém o conteúdo e produz backup recuperável com a nova senha.
+ const change=page.locator('form[data-security="change"]');
+ await change.locator('[name="old"]').fill('Cofre-Teste-Seguro-2026!');
+ await change.locator('[name="password"]').fill('Nova-Senha-Validacao-2026!');
+ await change.locator('[name="confirm"]').fill('Nova-Senha-Validacao-2026!');
+ await change.locator('button[type="submit"]').click();
+ await page.getByText(/^Senha alterada\./).waitFor();
+ assert.equal(await page.evaluate(()=>proofStoreRead(data.entries[0].proofs[0].imageRef)),image,'nova senha preserva comprovante');
+ const rejectsOldPassword=await page.evaluate(async()=>{
+   const box=JSON.parse(localStorage.getItem('rota_financeira_vault_v2'));
+   try{await decryptState(box,await deriveKey('Cofre-Teste-Seguro-2026!',unbase64(box.salt)));return false}catch{return true}
+ });
+ assert.equal(rejectsOldPassword,true,'cofre atual não aceita mais a senha antiga');
+ const rotatedEvent=page.waitForEvent('download');
+ await page.locator('[data-action="export"]').click();
+ const rotatedFile=path.join(temporary,'rotated.json');
+ await (await rotatedEvent).saveAs(rotatedFile);
+ password='Nova-Senha-Validacao-2026!';await importBackup(rotatedFile);
+ const rotatedState=await pc.evaluate(()=>expandedImages(data));
+ for(const entry of rotatedState.entries)for(const proof of entry.proofs||[])delete proof.imageRef;
+ assert.deepEqual(rotatedState,expectedState,'backup com nova senha restaura conteúdo completo');
+ password='Cofre-Teste-Seguro-2026!';
  // Bloqueio durante derivação da senha não pode reabrir o cofre nem substituir dados.
  const beforeLock=await pc.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
  await pc.evaluate(()=>{
@@ -133,7 +194,7 @@ try{
  assert.equal(badDownload,false,'não baixar backup incompleto');
  assert.equal(await page.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2')),beforeFailure);
  assert.equal(errors.length,0,'Erros de console JS: '+errors.join('; '));
- console.log('PASS Chrome mobile: cofre, senha, central, opção de backup, recarga.');
+ console.log('PASS recuperação: estado completo, imagens, arquivo adulterado, senha nova e cancelamento seguro.');
  await page.close();
 } finally {
  await browser?.close();
