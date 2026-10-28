@@ -38,9 +38,9 @@ Revisão independente do diff: nenhum achado Critical/Important/Minor no escopo;
 ## Verificação física e limites restantes
 
 - O responsável confirmou preservação dos dados antigos e consulta em modo avião no aparelho principal. É relato do responsável, sem captura, modelo ou versão técnica. Nenhuma informação financeira foi solicitada.
-- O responsável confirmou disponibilidade de outro aparelho. Preparar/restaurar apenas base fictícia em instalação vazia ou perfil separado; não substituir dados existentes para validar.
+- O responsável confirmou que restaurou o cofre fictício no segundo aparelho e que o comprovante abriu. É resultado relatado em conversa, sem modelo ou navegador informados; o agente não acessou esse aparelho nem dados pessoais.
 - O arquivo fictício para homologação deve ficar fora do repositório, identificado como teste, com valores conhecidos e comprovante sem validade fiscal. A senha desse arquivo é exclusivamente de teste.
-- Continuam pendentes até confirmação específica: restauração física no segundo aparelho, visualização da imagem recuperada, gravação offline, instalação e atualização pela interface HTTPS em dispositivos reais.
+- Continuam pendentes até confirmação específica: gravação offline, instalação e atualização pela interface HTTPS em dispositivos reais. Restauração e abertura do comprovante no segundo aparelho foram confirmadas pelo responsável.
 - Auth/e-mail/antiabuso reais, backups/PITR, exclusão/retenção, termos/privacidade e avaliação LGPD não foram validados nesta rodada. Não usar os resultados para declarar liberação comercial.
 
 ## Aceite

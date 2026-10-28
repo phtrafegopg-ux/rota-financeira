@@ -13,6 +13,7 @@ A importação de arquivo tinha uma corrida reproduzida: bloquear o cofre durant
 | Backup JSON pela interface, restauração em outro contexto e comprovante | `node tests/browser-smoke.mjs` | Arquivo cifrado; imagem recuperada; origem preservada; cancelamento/senha errada/bloqueio não substituem destino. Imagem ausente impede download incompleto. |
 | Backup de nuvem simulado e recuperação em outro contexto | `node tests/cloud-flow.mjs` | Imagem recuperada sem depender do IndexedDB original e sem upload pelo destinatário; conflitos e vínculo de conta preservados. |
 | Reabertura offline e atualização sob `/rota-financeira/` | `node tests/pwa-offline.mjs` | Registros, imagem e metadados sobrevivem à recarga, reabertura da página e nova versão; cache alheio preservado. |
+| Abas do mesmo perfil | `node tests/multi-tab.mjs` | Uma aba desbloqueada por vez; fila salva antes da transferência; falhas e fechamento liberam a reserva sem sobrescrever cofres. Requer Web Locks. |
 | Sessão, criptografia, restauração e troca de senha | `node --test tests/session-races.mjs tests/crypto-vault.mjs tests/restore-commit.mjs` | Dezesseis casos, incluindo senha errada, conteúdo adulterado, quota e cancelamento de troca de senha obsoleta. |
 | Layout | `node tests/responsive-layout.mjs` | Sete telas de 280 a 2560 px, abas e modais sem overflow nem mudança dos dados. |
 | Isolamento do banco | `.github/workflows/postgres-security.yml` | PostgreSQL 16 descartável com RLS, CAS e isolamento A/B aprovados. Nunca executar o bootstrap no Supabase real. |
@@ -23,7 +24,7 @@ Os testes de navegador usam Playwright 1.56.1 e Chromium. Requisitos e comandos 
 
 ## Homologação física — parcial
 
-Em conversa de 27/10/2026, o responsável informou que a atualização preservou os dados antigos e que conseguiu entrar e consultá-los em modo avião. Modelo do aparelho, sistema e navegador não foram informados; é evidência relatada, não observação direta do agente. Restauração em outro aparelho e abertura das imagens dos comprovantes ainda exigem confirmação específica. A rodada ampliada está em `docs/VALIDACAO-RECUPERACAO-2026-10-27.md`.
+Em conversa de 27/10/2026, o responsável informou que a atualização preservou os dados antigos e que conseguiu entrar e consultá-los em modo avião. Também confirmou que o cofre fictício foi restaurado no segundo aparelho e o comprovante abriu. Modelo dos aparelhos, sistema e navegador não foram informados; são evidências relatadas, não observação direta do agente. A rodada ampliada está em `docs/VALIDACAO-RECUPERACAO-2026-10-27.md`.
 
 Use base fictícia em perfil/dispositivo de teste. Para atualizar uma instalação com dados reais, o responsável deve primeiro exportar e guardar backup cifrado fora do repositório; o agente não deve receber nem abrir esse arquivo. Não restaurar dados fictícios por cima de uma instalação pessoal.
 
@@ -32,6 +33,7 @@ Use base fictícia em perfil/dispositivo de teste. Para atualizar uma instalaç�
 - [x] Entrar e consultar dados em modo avião: confirmado pelo responsável em conversa, sem identificação técnica do aparelho.
 - [ ] Em perfil de teste, registrar um lançamento fictício sem rede; fechar e reabrir para conferir a gravação.
 - [ ] Exportar backup sintético e restaurar em outro perfil/aparelho, usando a senha original. Conferir lançamentos e comprovante; cancelar e errar senha antes, verificando preservação do destino.
+- [x] Restaurar o kit fictício no segundo aparelho e abrir o comprovante: confirmado pelo responsável em conversa. Os demais casos físicos de cancelamento/senha errada continuam pendentes.
 - [ ] Voltar à rede, disponibilizar nova versão de teste e usar a barra de atualização HTTPS. Conferir dados após atualizar e depois offline.
 - [ ] Conferir celular, tablet e desktop: teclado, foco, zoom, textos longos, abas, formulários e modais. TV física deve ser registrada separadamente se for plataforma de uso pretendida.
 - [ ] Para uma futura beta com nuvem real, validar Auth, e-mail, RLS/CAS e restauração em ambiente dedicado somente com contas fictícias; esta entrega não usa nem modifica produção.

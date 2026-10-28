@@ -10,7 +10,21 @@ const saltNew=()=>crypto.getRandomValues(new Uint8Array(16));
 async function deriveKey(pass,salt){const material=await crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},material,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 async function packState(state,key,salt){const iv=crypto.getRandomValues(new Uint8Array(12));const encrypted=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(JSON.stringify(state)));return {schema:2,method:'PBKDF2-SHA256-AES256-GCM',iterations:310000,salt:base64(salt),iv:base64(iv),ciphertext:base64(encrypted),updatedAt:new Date().toISOString()}}
 async function decryptState(box,key){const bytes=await crypto.subtle.decrypt({name:'AES-GCM',iv:unbase64(box.iv)},key,unbase64(box.ciphertext));const state=JSON.parse(new TextDecoder().decode(bytes));if(!cleanState(state))throw Error('Formato inválido');return state}
-function vaultPage(){const root=document.getElementById('app');const exists=!!localStorage.getItem(VAULT);root.innerHTML=`<header class="head"><div class="brand"><div class="mark">↗</div><div><strong>Rota Financeira</strong><div class="eyebrow">Seus dados, protegidos</div></div></div></header><section class="panel hero"><div class="eyebrow" style="color:#bae9d9">${exists?'Acesso protegido':'Primeiro acesso'}</div><h1>${exists?'Desbloquear meu controle':'Crie uma senha de proteção'}</h1><p class="hint">${exists?'Seus lançamentos e suas metas estão criptografados neste aparelho.':'Seus dados financeiros serão criptografados no dispositivo. Sua senha não é enviada para servidores. Após entrar, importe o arquivo de dados iniciais fornecido separadamente.'}</p><form data-security="${exists?'unlock':'setup'}"><div class="field"><label>Senha do cofre (mínimo 8 caracteres)</label><input name="password" type="password" autocomplete="${exists?'current-password':'new-password'}" minlength="8" required></div>${exists?'':'<div class="field"><label>Confirmar senha</label><input name="confirm" type="password" autocomplete="new-password" minlength="8" required></div>'}<button class="btn block" type="submit">${exists?'Desbloquear':'Proteger e entrar'}</button></form></section><div class="notice">Guarde sua senha. Sem ela não é possível recuperar um backup criptografado. A sincronização na nuvem requer configuração separada.</div><p class="hint">Para restaurar em outro celular: configure uma senha temporária, acesse Ajustes → Nuvem, faça login e restaure o cofre salvo usando a senha original.</p>`;document.getElementById('modalRoot').innerHTML='';}
+let endVaultAccess=null;
+async function acquireVaultAccess(){
+ if(!navigator.locks?.request)throw Object.assign(Error('Atualize o navegador para abrir o cofre com proteção contra abas concorrentes.'),{code:'RF_LOCKS_UNAVAILABLE'});
+ await new Promise((resolve,reject)=>{
+  navigator.locks.request(VAULT,{ifAvailable:true},lock=>{
+   if(!lock)throw Object.assign(Error('O cofre já está aberto em outra aba. Bloqueie ou feche essa aba antes de entrar aqui.'),{code:'RF_VAULT_BUSY'});
+   return new Promise(release=>{endVaultAccess=release;resolve()});
+  }).catch(reject);
+ });
+}
+function releaseVaultAccess(){
+ const release=endVaultAccess;endVaultAccess=null;
+ if(release)saveQueue.finally(release).catch(()=>{});
+}
+function vaultPage(){releaseVaultAccess();const root=document.getElementById('app');const exists=!!localStorage.getItem(VAULT);root.innerHTML=`<header class="head"><div class="brand"><div class="mark">↗</div><div><strong>Rota Financeira</strong><div class="eyebrow">Seus dados, protegidos</div></div></div></header><section class="panel hero"><div class="eyebrow" style="color:#bae9d9">${exists?'Acesso protegido':'Primeiro acesso'}</div><h1>${exists?'Desbloquear meu controle':'Crie uma senha de proteção'}</h1><p class="hint">${exists?'Seus lançamentos e suas metas estão criptografados neste aparelho.':'Seus dados financeiros serão criptografados no dispositivo. Sua senha não é enviada para servidores. Após entrar, importe o arquivo de dados iniciais fornecido separadamente.'}</p><form data-security="${exists?'unlock':'setup'}"><div class="field"><label>Senha do cofre (mínimo 8 caracteres)</label><input name="password" type="password" autocomplete="${exists?'current-password':'new-password'}" minlength="8" required></div>${exists?'':'<div class="field"><label>Confirmar senha</label><input name="confirm" type="password" autocomplete="new-password" minlength="8" required></div>'}<button class="btn block" type="submit">${exists?'Desbloquear':'Proteger e entrar'}</button></form></section><div class="notice">Guarde sua senha. Sem ela não é possível recuperar um backup criptografado. A sincronização na nuvem requer configuração separada.</div><p class="hint">Para restaurar em outro celular: configure uma senha temporária, acesse Ajustes → Nuvem, faça login e restaure o cofre salvo usando a senha original.</p>`;document.getElementById('modalRoot').innerHTML='';}
 async function changeVaultPass(f){
  const btn=f.querySelector('button[type=submit]');btn.disabled=true;
  const originalKey=vaultKey,originalState=data,originalQueue=saveQueue;
@@ -33,8 +47,28 @@ async function changeVaultPass(f){
  finally{btn.disabled=false}
 }
 async function initSecurity(){if(!crypto?.subtle){document.getElementById('app').innerHTML='<div class="notice">Este ambiente não oferece criptografia segura. Abra o aplicativo em HTTPS (ou localhost), usando um navegador atualizado.</div>';return;}vaultPage()}
-async function unlock(pass){const box=JSON.parse(localStorage.getItem(VAULT));const key=await deriveKey(pass,unbase64(box.salt));const state=await decryptState(box,key);data=state;if(!Array.isArray(data.leaguePlans))data.leaguePlans=[];vaultKey=key;vaultSalt=unbase64(box.salt);currentVault=box;render();syncNativeAlerts();checkReminders()}
-async function setup(pass){let legacy;try{legacy=JSON.parse(localStorage.getItem(STORE))}catch(e){}data=cleanState(legacy)?legacy:initial();if(!Array.isArray(data.leaguePlans))data.leaguePlans=[];vaultSalt=saltNew();vaultKey=await deriveKey(pass,vaultSalt);const box=await packState(data,vaultKey,vaultSalt);localStorage.setItem(VAULT,JSON.stringify(box));currentVault=box;localStorage.removeItem(STORE);render();syncNativeAlerts();checkReminders()}
+async function unlock(pass){
+ await acquireVaultAccess();
+ try{
+  const box=JSON.parse(localStorage.getItem(VAULT));
+  const key=await deriveKey(pass,unbase64(box.salt)),state=await decryptState(box,key);
+  data=state;if(!Array.isArray(data.leaguePlans))data.leaguePlans=[];
+  vaultKey=key;vaultSalt=unbase64(box.salt);currentVault=box;
+  render();syncNativeAlerts();checkReminders();
+ }catch(error){vaultKey=null;vaultSalt=null;data=initial();vaultPage();throw error}
+}
+async function setup(pass){
+ await acquireVaultAccess();
+ try{
+  if(localStorage.getItem(VAULT))throw Error('Outra aba já criou um cofre. Reabra o aplicativo para desbloqueá-lo; nada foi substituído.');
+  let legacy;try{legacy=JSON.parse(localStorage.getItem(STORE))}catch(e){}
+  const state=cleanState(legacy)?legacy:initial();if(!Array.isArray(state.leaguePlans))state.leaguePlans=[];
+  const salt=saltNew(),key=await deriveKey(pass,salt),box=await packState(state,key,salt);
+  localStorage.setItem(VAULT,JSON.stringify(box));
+  data=state;vaultKey=key;vaultSalt=salt;currentVault=box;localStorage.removeItem(STORE);
+  render();syncNativeAlerts();checkReminders();
+ }catch(error){vaultKey=null;vaultSalt=null;data=initial();vaultPage();throw error}
+}
 
 let page='home',selectedMonth=dt().slice(0,7),entryMode='uber',billTab='bills';
 function save(strict=false){if(!vaultKey)return strict?Promise.reject(Error('Desbloqueie o cofre.')):false;if(window.AndroidAlerts)try{syncNativeAlerts()}catch(e){console.warn(e)}const snapshot=JSON.parse(JSON.stringify(data));const key=vaultKey,salt=vaultSalt;const write=saveQueue.catch(()=>{}).then(async()=>{const box=await packState(snapshot,key,salt);localStorage.setItem(VAULT,JSON.stringify(box));currentVault=box;localStorage.removeItem(STORE);return box});saveQueue=write.catch(e=>{console.error(e);toast('Falha ao salvar dados! Exporte um backup.');});return strict?write:true} 
@@ -292,7 +326,7 @@ async function downloadJSON(){
  }catch(err){alert('Não foi possível preparar o backup completo: '+err.message+'\nNão remova dados do navegador.');}
 }
 function fromForm(form){return Object.fromEntries(new FormData(form).entries())}
-document.addEventListener('submit',async ev=>{const f=ev.target;if(!f.matches('form[data-security]'))return;ev.preventDefault();if(f.dataset.security==='cloud'){await handleCloudForm(f,ev.submitter?.value||'login');return;}if(f.dataset.security==='change'){await changeVaultPass(f);return;}const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Protegendo os dados…';try{let pass=f.elements.password.value;if(pass.length<8)throw Error('Use uma senha com pelo menos 8 caracteres.');if(f.dataset.security==='setup'){if(pass!==f.elements.confirm.value)throw Error('As senhas não coincidem.');await setup(pass);}else await unlock(pass);f.reset();}catch(e){alert(f.dataset.security==='unlock'?'Senha incorreta ou dados corrompidos. Verifique sua senha.':e.message);btn.disabled=false;btn.textContent='Tentar novamente'}});
+document.addEventListener('submit',async ev=>{const f=ev.target;if(!f.matches('form[data-security]'))return;ev.preventDefault();if(f.dataset.security==='cloud'){await handleCloudForm(f,ev.submitter?.value||'login');return;}if(f.dataset.security==='change'){await changeVaultPass(f);return;}const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Protegendo os dados…';try{let pass=f.elements.password.value;if(pass.length<8)throw Error('Use uma senha com pelo menos 8 caracteres.');if(f.dataset.security==='setup'){if(pass!==f.elements.confirm.value)throw Error('As senhas não coincidem.');await setup(pass);}else await unlock(pass);f.reset();}catch(e){alert(f.dataset.security==='unlock'&&!['RF_VAULT_BUSY','RF_LOCKS_UNAVAILABLE'].includes(e.code)?'Senha incorreta ou dados corrompidos. Verifique sua senha.':e.message);btn.disabled=false;btn.textContent='Tentar novamente'}});
 document.addEventListener('submit',ev=>{let f=ev.target;if(!f.matches('form[data-form]'))return;ev.preventDefault();let v=fromForm(f),type=f.dataset.form;
  if(type==='leaguePlan'){
    if(!/^\d{4}-\d{2}-\d{2}$/.test(v.date)||v.date<nextDay()||v.date>maxPlanDay())return toast('Planeje somente datas futuras (até 45 dias).');
@@ -340,39 +374,47 @@ document.addEventListener('submit',ev=>{let f=ev.target;if(!f.matches('form[data
 document.addEventListener('submit',async ev=>{
  const f=ev.target;if(!f.matches('form[data-proof]'))return;
  ev.preventDefault();const entry=data.entries.find(e=>e.id===f.dataset.id&&e.type==='uber');if(!entry)return toast('Lançamento não encontrado.');
+ const proofKey=vaultKey,proofState=data;
+ const assertProofContext=()=>{
+  if(!proofKey||vaultKey!==proofKey||data!==proofState)throw Error('O cofre mudou durante a anexação.');
+ };
  const files=Array.from(f.elements.proofFile.files||[]);if(!files.length)return toast('Selecione um print.');
  const old=proofList(entry),remaining=5-old.length;
  if(files.length>remaining)return alert(`Limite: até 5 prints por plataforma/dia. Ainda cabem ${remaining}.`);
  const btn=f.querySelector('button[type=submit]');btn.disabled=true;btn.textContent='Protegendo comprovantes…';
- const newRefs=[];let backupProof=entry.proof,backupProofs=entry.proofs;
+ const newRefs=[];let backupProof=entry.proof,backupProofs=entry.proofs,committed=false;
  try{
    const added=[];
    for(const file of files){
     const p=await compressProof(file);
+    assertProofContext();
     if([...data.entries.flatMap(proofHashes),...added.map(a=>a.sha256)].includes(p.sha256))throw Error('Um destes prints já foi utilizado. Anexe apenas imagens diferentes.');
     p.platform=platformOf(entry);
     let ref=null;
     try{
-      ref=proofRef();await proofStorePut(ref,p.image);
-      if(await proofStoreRead(ref)!==p.image)throw Error('A gravação da imagem não foi confirmada.');
+      ref=proofRef();await proofStorePut(ref,p.image,proofKey);
+      if(await proofStoreRead(ref,proofKey)!==p.image)throw Error('A gravação da imagem não foi confirmada.');
       const stored={...p,imageRef:ref};delete stored.image;added.push(stored);newRefs.push(ref);
     }catch(dbError){
       if(ref)await proofStoreDelete(ref).catch(()=>{});
       console.warn('IndexedDB indisponível, utilizando imagem compacta:',dbError);
       added.push(await smallProofFallback(p));
     }
+    assertProofContext();
    }
    entry.proofs=[...old,...added];delete entry.proof;
-   await save(true);
-   const stored=JSON.parse(localStorage.getItem(VAULT)||'null');
-   const confirmed=await decryptState(stored,vaultKey);
+   const stored=await save(true);committed=true;
+   const confirmed=await decryptState(stored,proofKey);
    const actual=confirmed.entries.find(e=>e.id===entry.id);
    if(!actual||actual.proofs?.length!==entry.proofs.length||added.some(p=>!proofHashes(actual).includes(p.sha256)))throw Error('O navegador não confirmou todos os prints.');
+   if(vaultKey!==proofKey||data!==proofState)return;
    closeModal();render();toast(`${added.length} print(s) salvo(s) e protegido(s). Ainda não verificado(s).`);
  }catch(err){
-   entry.proof=backupProof;entry.proofs=backupProofs;
-   for(const ref of newRefs)await proofStoreDelete(ref).catch(console.warn);
-   alert('Não foi possível anexar: '+err.message+'\n\nPreserve seu backup antes de limpar os dados do navegador.');
+   if(!committed){
+    entry.proof=backupProof;entry.proofs=backupProofs;
+    for(const ref of newRefs)await proofStoreDelete(ref).catch(console.warn);
+   }
+   if(vaultKey===proofKey&&data===proofState)alert((committed?'Comprovantes gravados; não foi possível concluir a conferência: ':'Não foi possível anexar: ')+err.message+'\n\nPreserve seu backup antes de limpar os dados do navegador.');
  }finally{btn.disabled=false;btn.textContent='Adicionar comprovantes pendentes'}
 });
 document.addEventListener('click',ev=>{const btn=ev.target.closest('button');if(!btn)return;

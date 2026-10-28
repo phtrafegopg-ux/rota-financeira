@@ -95,6 +95,12 @@
    return refreshInFlight;
  }
  window.rfEnsureAuth=ensureSession;
+ const originalUnlock=unlock;
+ unlock=async function(password){
+   await originalUnlock(password);
+   dirty=Boolean(localStorage.getItem(PENDING));
+   if(page==="settings")render();
+ };
  const originalVaultPage=vaultPage;
  vaultPage=function(){
    sessionEpoch++;
@@ -292,6 +298,7 @@
      form.elements.password.value="";
      if(body.access_token){
        setSession(body);
+       dirty=Boolean(localStorage.getItem(PENDING));
        lastError="";remoteRevision=anchor()?.revision??null;
        // Migração de versões anteriores: recuperar aviso de backup atrasado
        // sem confiar em uma sessão anterior ao reiniciar o navegador.
