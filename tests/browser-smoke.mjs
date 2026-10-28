@@ -18,7 +18,7 @@ try{
  await page.goto(origin+'/index.html',{waitUntil:'networkidle',timeout:30000});
  console.log("DIAG",JSON.stringify({url:page.url(),title:await page.title(),body:(await page.locator('body').innerText()).slice(0,600),errors,hasCrypto:await page.evaluate(()=>!!crypto?.subtle),scripts:await page.locator('script').count()}));
  const tutorialRequests=[];
- page.on('request',request=>{if(request.url().endsWith('/tutorial-rota-financeira.mp4'))tutorialRequests.push(request.url())});
+ page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('/tutorial-rota-financeira.mp4'))tutorialRequests.push(request.url())});
  async function checkTutorial(){
    const before=await page.evaluate(()=>localStorage.getItem('rota_financeira_vault_v2'));
    await page.getByRole('button',{name:'Assistir tutorial',exact:true}).click();
@@ -27,7 +27,7 @@ try{
    assert.equal(await video.getAttribute('autoplay'),null);
    assert.notEqual(await video.getAttribute('controls'),null);
    assert.notEqual(await video.getAttribute('playsinline'),null);
-   assert.equal(await video.locator('source').getAttribute('src'),'./tutorial-rota-financeira.mp4');
+   assert.equal(await video.locator('source').getAttribute('src'),'./tutorial-rota-financeira.mp4?v=dora-20261028');
    await page.waitForTimeout(180);
    assert.equal(tutorialRequests.length,0,'MP4 só deve ser solicitado ao reproduzir');
    for(const width of [280,390,820,1920]){
