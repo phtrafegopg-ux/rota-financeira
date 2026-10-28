@@ -24,6 +24,7 @@ PWA estática, sem framework, bundler ou servidor próprio neste repositório. H
 | `styles-v3.css`, `styles-v4.css`, `styles-responsive.css` | Camadas de estilos; a camada responsiva é carregada por último. |
 | `online-ranking.js`, `subscriptions.js` | Consulta de ranking revisado e status de assinatura; interfaces de pré-lançamento. |
 | `manifest.webmanifest`, `sw.js`, `updater.js` | Instalação PWA, cache de recursos e fluxo de atualização. |
+| `tutorial-rota-financeira.mp4`, `tutorial-poster.jpg` | Tutorial público narrado com dados fictícios, aberto por botão na tela de acesso e em Ajustes. |
 | `supabase/01_seguro.sql` | Esquema, privilégios, políticas RLS e RPC CAS. Não executar automaticamente em produção. |
 | `tests/*.mjs`, `tests/sql/` | Testes locais, navegador com dados fictícios e banco descartável. |
 | `tests/pwa-offline.mjs` | Reabertura offline e ativação de atualização, preservando cofre, comprovantes, metadados e caches alheios. |
@@ -131,7 +132,7 @@ Manter celular, tablet, desktop e telas grandes/TV utilizáveis: sem rolagem hor
 2. Mantenha o diff no escopo. Commit e PR devem explicar problema, mudança, verificações executadas e limites. Nunca incluir arquivos privados, backups ou capturas com dados reais.
 3. PRs para `main` acionam `Verificações de segurança` (job `audit`) e `Testes de isolamento financeiro (PostgreSQL)` (job `rls`). Confira os resultados do commit atual; não presumir aprovação pela execução de uma versão anterior.
 4. `Publicar Rota Financeira` roda por push na `main` ou `workflow_dispatch`; `deploy` exige a referência `main` e sucesso dos jobs reutilizáveis `security` e `database` do mesmo workflow. Abrir PR não publica o site.
-5. O deploy copia somente `*.html`, `*.js`, `*.css`, `*.svg` e `manifest.webmanifest` da raiz para `public-site/`, depois usa Pages Actions. Markdown, testes e SQL ficam fora desse artefato. Não ampliar a publicação para o repositório inteiro.
+5. O deploy copia somente `*.html`, `*.js`, `*.css`, `*.svg`, `manifest.webmanifest` e os arquivos específicos `tutorial-rota-financeira.mp4` e `tutorial-poster.jpg` da raiz para `public-site/`, depois usa Pages Actions. Markdown, testes e SQL ficam fora desse artefato. Não ampliar a publicação para o repositório inteiro. O tutorial usa `preload=none`, não tem autoplay e não entra em `ASSETS`; assistir exige internet. Publicar somente material fictício revisado. Ao fechar/substituir o modal ou bloquear, interromper o vídeo e liberar sua fonte.
 6. Ao alterar recursos do app, conferir `ASSETS` e versão `CACHE` em `sw.js` e o fluxo em `updater.js`. Não aumentar o cache por edição apenas de documentação. Atualização de PWA com dados requer backup e conferência de saldos/comprovantes pelo responsável.
 
 Na inspeção de 27/10/2026, a API indicava `main` sem proteção de branch. Exigir revisão e checks é a prática deste guia; não afirmar que a configuração já os torna obrigatórios para merge. Não alterar regras administrativas sem solicitação.

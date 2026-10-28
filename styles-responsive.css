@@ -206,3 +206,8 @@ button{touch-action:manipulation}
  html{scroll-behavior:auto}
  .seg button,.nav button,.btn{transition:none!important}
 }
+.rf-tutorial-video{
+ display:block;width:100%;max-width:36vh;max-width:36dvh;
+ aspect-ratio:9/16;height:auto;max-height:64vh;max-height:64dvh;
+ margin:0 auto 14px;border-radius:12px;background:#091118;
+}
