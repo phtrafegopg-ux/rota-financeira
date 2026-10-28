@@ -467,7 +467,7 @@ document.addEventListener('click',ev=>{const btn=ev.target.closest('button');if(
  if(op==='prev'||op==='next'){selectedMonth=mshift(selectedMonth,op==='prev'?-1:1);render();return}
  if(op==='close'){closeModal();return}
  if(op==='tutorial'){
-  showModal('Como usar o Rota Financeira',`<video class="rf-tutorial-video" controls playsinline preload="none" poster="./tutorial-poster.jpg" aria-label="Tutorial narrado do Rota Financeira, com legendas em português"><source src="./tutorial-rota-financeira.mp4" type="video/mp4">Seu navegador não conseguiu abrir o vídeo.</video><p class="hint">Tutorial de 4min18s, com narração, legendas e dados fictícios. Aproximadamente 9 MB; assistir requer internet nesta versão.</p><a class="btn secondary block" href="./tutorial-rota-financeira.mp4" target="_blank" rel="noopener">Abrir vídeo em outra aba</a>`);
+  showModal('Como usar o Rota Financeira',`<video class="rf-tutorial-video" controls playsinline preload="none" poster="./tutorial-poster.jpg" aria-label="Tutorial narrado do Rota Financeira, com legendas em português"><source src="./tutorial-rota-financeira.mp4?v=dora-20261028" type="video/mp4">Seu navegador não conseguiu abrir o vídeo.</video><p class="hint">Tutorial de 3min26s, com narração, legendas e dados fictícios. Aproximadamente 8 MB; assistir requer internet nesta versão.</p><a class="btn secondary block" href="./tutorial-rota-financeira.mp4?v=dora-20261028" target="_blank" rel="noopener">Abrir vídeo em outra aba</a>`);
   return;
  }
  if(op==='newBill'||op==='editBill'){billForm(id?findBill(id):null);return}
