@@ -9,7 +9,7 @@ function harness() {
   localStorage:{getItem:k=>storage.get(k)??null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},
   document:{addEventListener:(n,f)=>(listeners[n]??=[]).push(f),getElementById:()=>({}),querySelector:()=>null},
   MutationObserver:class {observe(){}}, window:{isSecureContext:true,addEventListener(){}},navigator:{},
-  renderSettings:()=>'',vaultPage:()=>{},save:()=>true,setup:async()=>{},changeVaultPass:async()=>{},
+  renderSettings:()=>'',vaultPage:()=>{},save:()=>true,setup:async()=>{},unlock:async()=>{},changeVaultPass:async()=>{},
   render:()=>{},toast:()=>{},alert:()=>{},esc:String,
   cloudSession:null,vaultKey:{},page:'home',currentVault:null,CLOUD_CFG:'cfg',
   getCloudCfg:()=>({url:'https://test.supabase.co',anon:'public'}),

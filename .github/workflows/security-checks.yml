@@ -31,6 +31,7 @@ jobs:
       - run: node tests/cloud-flow.mjs
       - run: node tests/responsive-layout.mjs
       - run: node tests/pwa-offline.mjs
+      - run: node tests/multi-tab.mjs
       - name: Guardar capturas de layout
         if: always()
         uses: actions/upload-artifact@v4
