@@ -28,6 +28,7 @@ PWA estática, sem framework, bundler ou servidor próprio neste repositório. H
 | `tests/*.mjs`, `tests/sql/` | Testes locais, navegador com dados fictícios e banco descartável. |
 | `tests/pwa-offline.mjs` | Reabertura offline e ativação de atualização, preservando cofre, comprovantes, metadados e caches alheios. |
 | `tests/multi-tab.mjs` | Proteção contra edição concorrente do mesmo cofre em abas do mesmo perfil. |
+| `tests/audit-regressions.mjs` | Bloqueio durante leitura/envio, validação de importação, migração legada e pendência após troca de senha/importação. |
 | `docs/BETA-PRIVADA.md` | Evidências técnicas e roteiro de homologação física ainda pendente. |
 | `docs/VALIDACAO-RECUPERACAO-2026-10-27.md` | Rodada ampliada de recuperação e troca de senha, com resultados e limites. |
 | `.github/workflows/` | Verificações, PostgreSQL e publicação Pages. |
@@ -52,6 +53,9 @@ Para se orientar, execute `rg --files` e pesquise símbolos com `rg -n 'cloudUpl
 - Restauração exige backup prévio, consentimento, senha correta, validação e contexto ainda válido antes de substituir o cofre. Em erro ou cancelamento, preservar os dados. Uma requisição já aceita pelo servidor não é desfeita pelo bloqueio local.
 - Somente uma aba pode manter o cofre desbloqueado no mesmo perfil/origem. A reserva Web Locks usa a chave `rota_financeira_vault_v2` e é liberada após a fila de salvamento ao bloquear, ou pelo navegador ao fechar a aba. Navegadores sem Web Locks precisam ser atualizados; o app preserva o cofre e não abre edição sem essa proteção. Todas as abas devem executar a versão atualizada.
 - Ao anexar comprovantes, imagens referenciadas por uma gravação já confirmada não podem ser removidas por erro de conferência tardia ou bloqueio. A confirmação usa o snapshot e a chave capturados; ao assumir o cofre de outra aba, recuperar o marcador persistido de backup pendente.
+
+- Validar campos, tipos, datas e coleções antes de restaurar qualquer estado. Migração inválida deve preservar os dados legados. Importação local e troca de senha confirmadas marcam backup pendente; restauração remota mantém a revisão confirmada e desativa envio automático.
+- Visualização de comprovantes e resultados de upload atrasados não podem exibir dados, alertas ou redesenhar Ajustes depois de bloqueio/troca de contexto.
 
 ## Segurança, privacidade e preservação
 
@@ -95,11 +99,12 @@ node tests/cloud-flow.mjs
 node tests/responsive-layout.mjs
 node tests/pwa-offline.mjs
 node tests/multi-tab.mjs
+node tests/audit-regressions.mjs
 ```
 
-Essa instalação é para ambiente de teste isolado; não adiciona uma etapa de build. Não apagar dependências locais nem publicar arquivos gerados. Os cinco scripts iniciam seu próprio servidor Python nas portas 8765, 8766, 8767, 8768 e 8769, respectivamente; execute-os em sequência e confirme que as portas estão livres. Usam `process.env.PYTHON` ou `python3`. No PowerShell, se o executável disponível for `python`, configure `$env:PYTHON = 'python'` antes de rodá-los. Não usar o perfil pessoal do navegador nem conectar contas reais. `tests/cloud-flow.mjs` intercepta a API de nuvem com respostas simuladas. `tests/pwa-offline.mjs` usa cópia temporária sob `/rota-financeira/`; valida o protocolo do service worker, não o clique na barra HTTPS nem instalação física.
+Essa instalação é para ambiente de teste isolado; não adiciona uma etapa de build. Não apagar dependências locais nem publicar arquivos gerados. Os seis scripts iniciam seu próprio servidor Python nas portas 8765, 8766, 8767, 8768, 8769 e 8770, respectivamente; execute-os em sequência e confirme que as portas estão livres. Usam `process.env.PYTHON` ou `python3`. No PowerShell, se o executável disponível for `python`, configure `$env:PYTHON = 'python'` antes de rodá-los. Não usar o perfil pessoal do navegador nem conectar contas reais. `tests/cloud-flow.mjs` intercepta a API de nuvem com respostas simuladas. `tests/pwa-offline.mjs` usa cópia temporária sob `/rota-financeira/`; valida o protocolo do service worker, não o clique na barra HTTPS nem instalação física.
 
-`tests/multi-tab.mjs` inicia seu servidor na porta 8769. Se a porta estiver ocupada, tanto essa suite quanto `tests/browser-smoke.mjs` aceitam `RF_TEST_PORT` com outra porta livre. Não interromper servidores de outros projetos para executar a validação.
+`tests/multi-tab.mjs` inicia seu servidor na porta 8769. Se a porta estiver ocupada, essa suite, `tests/browser-smoke.mjs` e `tests/audit-regressions.mjs` aceitam `RF_TEST_PORT` com outra porta livre. Não interromper servidores de outros projetos para executar a validação.
 
 Para visualizar manualmente em ambiente isolado, o mesmo servidor padrão usado pelos testes pode ser iniciado com `python3 -m http.server 8765 --bind 127.0.0.1` e aberto em `http://127.0.0.1:8765/index.html`. Use o executável Python disponível e uma porta livre. Web Crypto requer HTTPS ou localhost; abrir por `file://` não substitui esse teste.
 

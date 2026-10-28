@@ -32,6 +32,7 @@ jobs:
       - run: node tests/responsive-layout.mjs
       - run: node tests/pwa-offline.mjs
       - run: node tests/multi-tab.mjs
+      - run: node tests/audit-regressions.mjs
       - name: Guardar capturas de layout
         if: always()
         uses: actions/upload-artifact@v4
