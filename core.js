@@ -3,7 +3,34 @@ const STORE='rota_financeira_v1';const VAULT='rota_financeira_vault_v2';const CL
 function initial(){return {version:2,leaguePlans:[],settings:{name:'Meu Controle',initialCash:0,initialDate:dt(),salary:0,uberCost:35,uberTarget:0},entries:[],bills:[],debts:[],goals:[{id:'emergency',title:'Reserva de emergência',target:1000,current:0,note:'Primeira meta do seu planejamento.'}],snapshots:[],notes:[]};}
 
 let data=initial(),vaultKey=null,vaultSalt=null,saveQueue=Promise.resolve(),cloudSession=null,reminderBusy=false;let currentVault=null;let lastActivity=Date.now();
-const cleanState=o=>o&&typeof o==='object'&&Array.isArray(o.entries)&&Array.isArray(o.bills)&&Array.isArray(o.debts)&&Array.isArray(o.goals)&&Array.isArray(o.snapshots)&&o.settings&&typeof o.settings==='object';
+function cleanState(o){
+ const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x);
+ const text=x=>typeof x==='string';
+ const number=x=>typeof x==='number'&&Number.isFinite(x);
+ const month=x=>text(x)&&/^\d{4}-(0[1-9]|1[0-2])$/.test(x);
+ const date=x=>{
+  if(!text(x)||!/^\d{4}-\d{2}-\d{2}$/.test(x))return false;
+  const d=new Date(x+'T12:00:00Z');return !Number.isNaN(d.getTime())&&d.toISOString().slice(0,10)===x;
+ };
+ const optional=(x,rules)=>Object.entries(rules).every(([key,valid])=>x[key]===undefined||valid(x[key]));
+ const proof=x=>object(x)&&optional(x,{image:text,imageRef:text,sha256:text,status:text,savedAt:text,platform:text})&&
+  (text(x.image)&&x.image.startsWith('data:image/')||text(x.imageRef)&&x.imageRef.length>0);
+ if(!object(o)||!object(o.settings)||!['entries','bills','debts','goals','snapshots'].every(k=>Array.isArray(o[k])))return false;
+ if(!date(o.settings.initialDate)||!optional(o.settings,{name:text,initialCash:number,salary:number,uberCost:number,uberTarget:number}))return false;
+ if(!o.entries.every(e=>object(e)&&text(e.id)&&date(e.date)&&['uber','income','expense','bill'].includes(e.type)&&
+  optional(e,{note:text,category:text,platform:text,paymentMethod:text,billId:text,billMonth:month})&&
+  (e.type==='uber'?['gross','fuel','fee','other'].every(k=>number(e[k])):number(e.amount))&&
+  (e.proof===undefined||proof(e.proof))&&(e.proofs===undefined||Array.isArray(e.proofs)&&e.proofs.every(proof))))return false;
+ if(!o.bills.every(b=>object(b)&&text(b.id)&&text(b.title)&&number(b.amount)&&
+  optional(b,{category:text,day:text,reference:x=>x===''||month(x),dueDate:x=>x===''||date(x)})&&
+  (b.kind==='once'?month(b.month):b.kind==='recurring'&&month(b.start)&&(!b.end||month(b.end)))&&
+  (b.payments===undefined||object(b.payments)&&Object.entries(b.payments).every(([m,p])=>month(m)&&object(p)&&number(p.amount)&&date(p.date)))))return false;
+ if(!o.debts.every(d=>object(d)&&text(d.id)&&text(d.title)&&['installment','remaining','totalRemaining'].every(k=>number(d[k]))&&optional(d,{note:text,deducted:x=>typeof x==='boolean'})))return false;
+ if(!o.goals.every(g=>object(g)&&text(g.id)&&text(g.title)&&number(g.target)&&number(g.current)&&optional(g,{note:text})))return false;
+ if(!o.snapshots.every(s=>object(s)&&month(s.month)&&optional(s,{createdAt:text,uberNet:number,gross:number,income:number,expense:number,nUber:number,balance:number,planned:number,debtsTotal:number})&&
+  (s.goals===undefined||Array.isArray(s.goals)&&s.goals.every(g=>object(g)&&text(g.title)&&number(g.current)&&number(g.target)))))return false;
+ return o.leaguePlans===undefined||Array.isArray(o.leaguePlans)&&o.leaguePlans.every(p=>object(p)&&date(p.date)&&['rest','work'].includes(p.kind)&&number(p.grossTarget)&&optional(p,{id:text,createdAt:text}));
+}
 const base64=a=>{const bytes=new Uint8Array(a);let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(binary)};
 const unbase64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const saltNew=()=>crypto.getRandomValues(new Uint8Array(16));
@@ -61,7 +88,11 @@ async function setup(pass){
  await acquireVaultAccess();
  try{
   if(localStorage.getItem(VAULT))throw Error('Outra aba já criou um cofre. Reabra o aplicativo para desbloqueá-lo; nada foi substituído.');
-  let legacy;try{legacy=JSON.parse(localStorage.getItem(STORE))}catch(e){}
+  const legacyText=localStorage.getItem(STORE);let legacy;
+  if(legacyText!==null){
+   try{legacy=JSON.parse(legacyText)}catch{throw Error('Dados antigos inválidos. Preserve uma cópia antes de continuar.');}
+   if(!cleanState(legacy))throw Error('Dados antigos incompatíveis. Nada foi substituído. Preserve uma cópia antes de continuar.');
+  }
   const state=cleanState(legacy)?legacy:initial();if(!Array.isArray(state.leaguePlans))state.leaguePlans=[];
   const salt=saltNew(),key=await deriveKey(pass,salt),box=await packState(state,key,salt);
   localStorage.setItem(VAULT,JSON.stringify(box));
@@ -266,11 +297,13 @@ function proofForm(e){
 }
 async function viewProof(e){
  if(!e||e.type!=='uber'||!proofList(e).length)return;
+ const proofKey=vaultKey,proofState=data;
  try{
- const imgs=await Promise.all(proofList(e).map(p=>p.image||proofStoreRead(p.imageRef)));
+ const imgs=await Promise.all(proofList(e).map(p=>p.image||proofStoreRead(p.imageRef,proofKey)));
+ if(!proofKey||vaultKey!==proofKey||data!==proofState)return;
  const gallery=imgs.map((image,i)=>`<div style="margin:16px 0;padding:10px;background:var(--panel2);border-radius:12px"><div class="row"><b>Print ${i+1}</b><button class="btn danger sm" data-action="removeSingleProof" data-id="${esc(e.id)}" data-index="${i}">Excluir</button></div><img alt="Captura de tela de ${esc(platformOf(e))}" src="${esc(image)}" style="display:block;width:100%;max-height:50vh;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:9px;background:#081118"></div>`).join('');
  showModal('Prints — '+platformOf(e),`<div class="notice">Status: aguardando revisão externa. Nenhuma imagem deste dispositivo é considerada verificada nem dá direito a premiação.</div><div class="details"><div>Plataforma</div><div>${esc(platformOf(e))}</div><div>Data</div><div>${esc(e.date.split('-').reverse().join('/'))}</div><div>Faturamento declarado</div><div>${fmt(e.gross)}</div><div>Total de anexos</div><div>${imgs.length}</div></div>${gallery}<button class="btn secondary block" data-action="proof" data-id="${esc(e.id)}">＋ Anexar outro print</button>`);
- }catch(err){alert('Não foi possível abrir o print: '+err.message)}
+ }catch(err){if(vaultKey===proofKey&&data===proofState)alert('Não foi possível abrir o print: '+err.message)}
 }
 
 async function compressProof(file){

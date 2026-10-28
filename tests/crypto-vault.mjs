@@ -7,7 +7,7 @@ const c={crypto:webcrypto,TextEncoder,TextDecoder,btoa,atob,Date,Intl,Uint8Array
 vm.createContext(c);
 // Load the real crypto functions, before the DOM portion of core.js.
 vm.runInContext(fs.readFileSync('core.js','utf8').split('function vaultPage(){')[0],c);
-const state={settings:{name:'segredo'},entries:[],bills:[],debts:[],goals:[],snapshots:[]};
+const state={settings:{name:'segredo',initialDate:'2026-10-01'},entries:[],bills:[],debts:[],goals:[],snapshots:[]};
 test('large encrypted backup including proof images round-trips without stack overflow',async()=>{
  const salt=new Uint8Array(16).fill(7),key=await c.deriveKey('senha-exclusiva-de-teste',salt);
  const large={...state,notes:['x'.repeat(400000)]};

@@ -30,7 +30,7 @@ try{
  await page.setViewportSize({width:390,height:850});
  assert.ok(!(await page.locator('#app').innerText()).includes('Bradesco'),'Não exibir dados financeiros de outro usuário');
  await page.evaluate(async()=>{
-   data.entries.push({type:'uber',date:dt(),gross:220,fuel:30,fee:15,other:5,platform:'Uber'});
+   data.entries.push({id:'synthetic-entry',type:'uber',date:dt(),gross:220,fuel:30,fee:15,other:5,platform:'Uber'});
    await save(true);
    render();
  });

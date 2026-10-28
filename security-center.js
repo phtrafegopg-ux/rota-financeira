@@ -167,6 +167,7 @@
      if(page==="settings")render();
      return true;
    }catch(e){
+      try{assertContext(stamp)}catch{return false}
      lastError=String(e.message||e).slice(0,280);
      if(manual)alert("Backup não realizado: "+lastError);
      if(page==="settings")render();
@@ -245,6 +246,7 @@
      clearTimeout(timer);
      assertContext(restoreStamp);
      await restorePortableState(restored,key,salt,()=>assertContext(restoreStamp));
+      clearTimeout(timer);
      setAnchor(Number(row.revision));
      mutationSeq++;
      dirty=false;
@@ -345,6 +347,15 @@
    finally{reminderBusy=false}
  };
  const oldSave=save;
+  const oldRestore=restorePortableState;
+  restorePortableState=async function(...args){
+    const box=await oldRestore(...args);
+    mutationSeq++;dirty=true;
+    localStorage.setItem(PENDING,box.updatedAt);
+    schedule();
+    if(page==="settings")render();
+    return box;
+  };
  save=function(strict=false){
    const r=oldSave(strict);
    if(vaultKey){mutationSeq++;dirty=true;localStorage.setItem(PENDING,new Date().toISOString());schedule()}

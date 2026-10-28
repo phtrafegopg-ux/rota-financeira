@@ -144,6 +144,8 @@ try{
  assert.equal(receiverUploads,0,'destinatário não tenta enviar nenhum backup');
  assert.equal(await restore.count(),0,"formulário fechado após sucesso");
  assert.equal(await pc.evaluate(()=>window.rfSecurityStatus().autoSync),false,"sem envio automático após recuperação");
+ assert.equal(await pc.evaluate(()=>window.rfSecurityStatus().dirty),false,"restauração da nuvem já corresponde à revisão confirmada");
+ assert.equal(await pc.evaluate(()=>localStorage.getItem('rf_local_unsynced_v40')),null,"sem pendência falsa após restauração remota");
  assert.equal(pcErrors.length,0,"erros no PC: "+pcErrors.join("; "));
  await secondContext.close();
  console.log("PASS — recuperação PC: cancelar, senha errada, senha certa, sem prompt e sem upload.");
