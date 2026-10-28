@@ -1,5 +1,7 @@
 # Rota Financeira 3.1 — Segurança e implantação
 
+> Registro histórico. Estado atual e limites: [entrega técnica da beta privada](docs/ENTREGA-BETA-PRIVADA.md). Configurações de produção citadas abaixo não foram reconfirmadas neste encerramento.
+
 ## Estado real
 
 - Cofre financeiro local: AES-256-GCM com senha derivada via PBKDF2 (310.000 iterações).
@@ -42,7 +44,7 @@
 2. Fluxo seguro de redefinição de senha de login e recuperação com chave de emergência independente para o cofre (não implementado).
 3. Validação de comprovantes fora do navegador, consentimento explícito, retenção mínima e equipe/regras de revisão; pontuação oficial não pode confiar somente em OCR.
 4. Provedor de pagamentos e webhook verificado no servidor com idempotência; nunca definir PRO pelo cliente.
-5. Análise das condições legais de atividade empresarial para militar da ativa, normas de promoções comerciais e LGPD.
+5. Análise do enquadramento empresarial aplicável, normas de promoções comerciais e LGPD.
 6. Testes de segurança externos (pentest), análise de dependências, restauração e recuperação de desastres.
 
 ## Ordem de lançamento recomendada

@@ -1,5 +1,7 @@
 # Rota Financeira 4.0 — Segurança e experiência premium
 
+> Registro histórico. Estado atual e limites: [entrega técnica da beta privada](docs/ENTREGA-BETA-PRIVADA.md). Configurações de produção citadas abaixo não foram reconfirmadas neste encerramento.
+
 ## Entregas desta versão
 
 - **Código e privacidade:** extrair a lógica JavaScript do HTML para `core.js`, reforçando a política `script-src 'self'`. Remover avisos específicos de dívidas de uma única pessoa e datas fixas de início; um novo motorista recebe um cofre vazio e planejamento relativo ao mês atual.
